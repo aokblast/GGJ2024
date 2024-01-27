@@ -146,11 +146,7 @@ impl SoundPlayer {
         self.has_started = false;
     }
 
-    pub fn update(
-        &mut self,
-        mut commands: Commands,
-        sound: Res<StepSound>,
-    ) -> bool {
+    pub fn update(&mut self, mut commands: Commands, sound: Res<StepSound>) -> bool {
         if !self.has_started {
             return false;
         }

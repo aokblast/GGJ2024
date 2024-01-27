@@ -1,11 +1,11 @@
 mod sound_player;
 
+use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
 use sound_player::*;
-use bevy::core_pipeline::clear_color::ClearColorConfig;
 
 fn main() {
     App::new()
