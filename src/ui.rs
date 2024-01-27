@@ -1,67 +1,6 @@
-mod sound_player;
-
-use bevy::{
-    input::{keyboard::KeyboardInput, ButtonState},
-    prelude::*,
-};
-use sound_player::*;
+use bevy::ecs::query;
+use bevy::prelude::*;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, phah)
-        .add_systems(Update, sound_timer)
-        .insert_resource(CounterNumber { score: 123 })
-        .add_systems(Startup, setup_camera)
-        .add_systems(
-            Update,
-            (counter_system, (counter_update_system, text_color_system)).chain(),
-        )
-        .run();
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut sound_player: SoundPlayer = SoundPlayer::new(1000);
-    sound_player.add_action(Action::new(vec![1, 2, 2], ActionType::Attack));
-
-    commands.insert_resource(sound_player);
-
-    let ball_collision_sound = asset_server.load("sounds/gong.ogg");
-    commands.insert_resource(StepSound(ball_collision_sound));
-}
-
-fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPlayer>) {
-    for event in events.read() {
-        if event.state == ButtonState::Pressed {
-            match event.key_code {
-                Some(KeyCode::A) => {
-                    sound_player.key_down(1);
-                }
-                Some(KeyCode::S) => {
-                    sound_player.key_down(2);
-                }
-                Some(KeyCode::D) => {
-                    println!("start");
-                    sound_player.start();
-                }
-                _ => continue,
-            }
-        }
-    }
-}
-
-fn sound_timer(mut sound_player: ResMut<SoundPlayer>, commands: Commands, sound: Res<StepSound>) {
-    sound_player.update(commands, sound);
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum AppState {
-    MainMenu,
-    select,
-    InGame,
-}
 
 #[derive(Component)]
 struct MyCameraMarker;
@@ -76,8 +15,8 @@ const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 struct CounterText;
 
 #[derive(Resource)]
-struct CounterNumber {
-    score: usize,
+struct CounterNumber{
+    score: usize, 
 }
 
 #[derive(Resource)]
@@ -118,23 +57,23 @@ fn setup_camera(mut commands: Commands) {
         }),
         Colortext,
     ));
-    commands.spawn((
-        TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: COUNTER_COLOR,
-                    ..default()
-                },
-            ),
-            TextSection::from_style(TextStyle {
+    commands.spawn(
+    (TextBundle::from_sections([
+        TextSection::new(
+            "Score: ",
+            TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: COUNTER_COLOR,
                 ..default()
-            }),
-        ]),
-        CounterText,
+            },
+        ),
+        TextSection::from_style(TextStyle {
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: COUNTER_COLOR,
+            ..default()
+        }),
+    ]),
+    CounterText,
     ));
 }
 
@@ -151,17 +90,13 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
         };
     }
 }
-fn counter_system(mut counterboard: ResMut<CounterNumber>) {
-    if true {
-        //attack deals demage
-        counterboard.score += 1;
+fn counter_system(mut counterboard: ResMut<CounterNumber>){
+    if true { //attack deals demage
+        counterboard.score+=1;
     }
 }
 
-fn counter_update_system(
-    counter: Res<CounterNumber>,
-    mut query: Query<&mut Text, With<CounterText>>,
-) {
+fn counter_update_system(counter: Res<CounterNumber> , mut query: Query<&mut Text,With<CounterText>>) {
     for mut text in &mut query {
         text.sections[1].value = counter.score.to_string();
     }
@@ -174,7 +109,7 @@ fn counter_update_system(
 //     }
 // }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]//+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
 pub enum JustifyText {
     /// Leftmost character is immediately to the right of the render position.
     /// Bounds start from the render position and advance rightwards.

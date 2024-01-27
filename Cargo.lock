@@ -3,13 +3,6 @@
 version = 3
 
 [[package]]
-name = "GGJ2024"
-version = "0.1.0"
-dependencies = [
- "bevy",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1720,6 +1713,13 @@ dependencies = [
  "libc",
  "wasi",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "ggj-2024"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
