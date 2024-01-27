@@ -2,23 +2,6 @@ use bevy::ecs::query;
 use bevy::prelude::*;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .insert_resource(CounterNumber { score: 123 })
-        .add_systems(Startup, setup_camera)
-        .add_systems(Update, (counter_system,(counter_update_system, text_color_system)).chain())
-        .run();
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum AppState {
-    MainMenu,
-    select,
-    InGame,
-}
-
 #[derive(Component)]
 struct MyCameraMarker;
 
