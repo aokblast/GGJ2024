@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.12.1", features = ["dynamic_linking"] }
+bevy_tweening = { version = "0.9.0", features = ["bevy_sprite"] }
 
 [profile.dev]
 opt-level = 1

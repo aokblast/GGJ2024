@@ -1,11 +1,18 @@
+mod config;
+mod plugins;
 mod sound_player;
 
 use bevy::core_pipeline::clear_color::ClearColorConfig;
+use bevy::ecs::query;
 use bevy::math::bool;
+use bevy::prelude::*;
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
+use bevy_tweening::TweeningPlugin;
+use config::ImageKey;
+use plugins::{JumpImage, JumpImagePlugin};
 use sound_player::*;
 
 #[derive(Resource)]
@@ -22,6 +29,10 @@ fn main() {
         .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
         .add_state::<AppState>()
+        // third-party plugins
+        .add_plugins(TweeningPlugin)
+        // our plugins
+        .add_plugins(JumpImagePlugin)
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -93,7 +104,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         )
         .with_style(Style {
             position_type: PositionType::Absolute,
-            top: Val::Px(20.0),
+            top: Val::Px(150.0),
             left: Val::Px(5.0),
             ..default()
         }),
@@ -291,6 +302,13 @@ fn phah(
                     println!("start");
                     sound_player.start();
                 }
+                Some(KeyCode::Space) => {
+                    commands.spawn(JumpImage {
+                        key: ImageKey::GenShinStart,
+                        from: Vec2::new(-960., 0.),
+                        to: Vec2::new(-240., 0.),
+                    });
+                }
                 _ => continue,
             }
         }
@@ -356,13 +374,18 @@ pub struct ComboNumber {
 #[derive(Resource)]
 struct GreetTimer(Timer);
 
-fn setup_camera(mut commands: Commands) {
+fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let background = asset_server.load("images/background.png");
+    commands.spawn(SpriteBundle {
+        texture: background,
+        ..Default::default()
+    });
+
     commands.spawn((
         Camera2dBundle {
             camera_2d: Camera2d {
                 clear_color: ClearColorConfig::Custom(Color::rgb(0.5, 0.2, 0.2)),
             },
-            transform: Transform::from_xyz(100.0, 200.0, 0.0),
             ..default()
         },
         MyCameraMarker,
@@ -522,6 +545,12 @@ pub fn score_system(
     mut evt: EventReader<AttackEvent>,
 ) {
     for e in evt.read() {
+        if e.0 == 1 {
+            if e.1 {
+                counter.score1 += combo.score1 + 3;
+                combo.score1 += 1;
+            } else {
+                combo.score1 = 0;
         if e.0 == 1 {
             if e.1 {
                 counter.score1 += combo.score1 + 3;
