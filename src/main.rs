@@ -551,12 +551,6 @@ pub fn score_system(
                 combo.score1 += 1;
             } else {
                 combo.score1 = 0;
-        if e.0 == 1 {
-            if e.1 {
-                counter.score1 += combo.score1 + 3;
-                combo.score1 += 1;
-            } else {
-                combo.score1 = 0;
             }
         } else {
             if e.1 {
