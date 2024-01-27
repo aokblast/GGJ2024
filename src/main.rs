@@ -360,7 +360,6 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
     }
 }
 pub fn score_system(
-<<<<<<< HEAD
         mut counter: ResMut<CounterNumber>,
         mut combo: ResMut<ComboNumber>,
         mut evt: EventReader<AttackEvent>,
@@ -384,29 +383,6 @@ pub fn score_system(
             }
         }
     }
-=======
-    mut counter: ResMut<CounterNumber>,
-    mut combo: ResMut<ComboNumber>,
-    mut evt: EventReader<AttackEvent>,
-) {
-    for e in evt.read() {}
-
-    // if player == 1{
-    //     if success{
-    //         counter.score1+=combo.score1+3;
-    //         combo.score1+=1;
-    //     }else{
-    //         combo.score1=0;
-    //     }
-    // }else {
-    //     if success{
-    //         counter.score2+=combo.score2+3;
-    //         combo.score2+=1;
-    //     }else{
-    //         combo.score2=0;
-    //     }
-    // }
->>>>>>> 720b6e90bd1d6d13656e4bdc077cf64788c4756c
 }
 
 fn counter1_update_system(
