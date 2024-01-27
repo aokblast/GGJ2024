@@ -25,6 +25,7 @@ pub struct SoundPlayer {
     past_key: Vec<i32>,
     has_started: bool,
     last_step: u128,
+    max_key: usize,
 }
 
 impl Action {
@@ -53,11 +54,16 @@ impl SoundPlayer {
             past_key: vec![],
             has_started: false,
             last_step: 0,
+            max_key: 0,
         }
     }
 
     pub fn add_action(&mut self, action: Action) {
-        self.actions.push(action)
+        let l = action.keys.len();
+        self.actions.push(action);
+        if l > self.max_key {
+            self.max_key = l;
+        }
     }
 
     pub fn start(&mut self) {
@@ -136,7 +142,7 @@ impl SoundPlayer {
         if let Some(a) = match_action {
             self.past_key.clear();
             self.do_action(&a.action_type);
-        } else if self.past_key.len() >= 3 {
+        } else if self.past_key.len() >= self.max_key {
             println!("wrong combo");
             self.past_key.clear();
         }
