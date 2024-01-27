@@ -24,7 +24,7 @@ pub struct SoundPlayer {
     interval: u128,
     start_time: u128,
     action_start_time: u128,
-    past_key: Vec<i32>,
+    pub past_key: Vec<i32>,
     has_started: bool,
     last_step: u128,
     max_key: usize,
@@ -129,11 +129,13 @@ impl SoundPlayer {
             return;
         }
 
-        println!("{}", key);
-
-        for _ in 1..missing_key {
-            self.past_key.push(0);
+        if missing_key > 1 {
+            println!("too slow");
+            self.past_key.clear();
+            return;
         }
+
+        println!("{}", key);
 
         self.past_key.push(key);
         let match_action = self
