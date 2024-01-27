@@ -81,7 +81,7 @@ impl SoundPlayer {
         match action_type {
             ActionType::Attack => {
                 println!("Attack");
-                evt_w.send(AttackEvent(1,true));
+                evt_w.send(AttackEvent(1, true));
             }
             ActionType::Defence => {
                 println!("Defence");

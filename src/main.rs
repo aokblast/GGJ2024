@@ -166,7 +166,7 @@ struct CounterText1;
 struct CounterText2;
 
 #[derive(Debug, Event)]
-struct AttackEvent(i32,bool);
+struct AttackEvent(i32, bool);
 
 #[derive(Component)]
 struct PastKeys;
@@ -360,53 +360,27 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
     }
 }
 pub fn score_system(
-<<<<<<< HEAD
-        mut counter: ResMut<CounterNumber>,
-        mut combo: ResMut<ComboNumber>,
-        mut evt: EventReader<AttackEvent>,
-    ) {
-
-    for e in evt.read() {
-        
-        if e.0 == 1{
-            if e.1{
-                counter.score1+=combo.score1+3;
-                combo.score1+=1;
-            }else{
-                combo.score1=0;
-            }
-        }else {
-            if e.1{
-                counter.score2+=combo.score2+3;
-                combo.score2+=1;
-            }else{
-                combo.score2=0;
-            }
-        }
-    }
-=======
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
     mut evt: EventReader<AttackEvent>,
 ) {
-    for e in evt.read() {}
-
-    // if player == 1{
-    //     if success{
-    //         counter.score1+=combo.score1+3;
-    //         combo.score1+=1;
-    //     }else{
-    //         combo.score1=0;
-    //     }
-    // }else {
-    //     if success{
-    //         counter.score2+=combo.score2+3;
-    //         combo.score2+=1;
-    //     }else{
-    //         combo.score2=0;
-    //     }
-    // }
->>>>>>> 720b6e90bd1d6d13656e4bdc077cf64788c4756c
+    for e in evt.read() {
+        if e.0 == 1 {
+            if e.1 {
+                counter.score1 += combo.score1 + 3;
+                combo.score1 += 1;
+            } else {
+                combo.score1 = 0;
+            }
+        } else {
+            if e.1 {
+                counter.score2 += combo.score2 + 3;
+                combo.score2 += 1;
+            } else {
+                combo.score2 = 0;
+            }
+        }
+    }
 }
 
 fn counter1_update_system(
