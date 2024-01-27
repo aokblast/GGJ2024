@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::vec;
 
+use crate::{main, score_system, AttackEvent, ComboNumber, CounterNumber};
+
 pub enum ActionType {
     Attack,
     Defence,
@@ -75,10 +77,11 @@ impl SoundPlayer {
         self.has_started = true;
     }
 
-    fn do_action(&self, action_type: &ActionType) {
+    fn do_action(&self, action_type: &ActionType, evt_w: &mut EventWriter<AttackEvent>) {
         match action_type {
             ActionType::Attack => {
                 println!("Attack");
+                evt_w.send(AttackEvent(1));
             }
             ActionType::Defence => {
                 println!("Defence");
@@ -89,7 +92,7 @@ impl SoundPlayer {
         }
     }
 
-    pub fn key_down(&mut self, key: i32) {
+    pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>) {
         if !self.has_started {
             return;
         }
@@ -143,7 +146,7 @@ impl SoundPlayer {
 
         if let Some(a) = match_action {
             self.past_key.clear();
-            self.do_action(&a.action_type);
+            self.do_action(&a.action_type, evt_w);
         } else if self.past_key.len() >= self.max_key {
             println!("wrong combo");
             self.past_key.clear();
