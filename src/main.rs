@@ -7,6 +7,15 @@ use bevy::{
 };
 use sound_player::*;
 
+#[derive(Resource)]
+pub struct WSound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct ASound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct DSound(pub Handle<AudioSource>);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -30,19 +39,68 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let ball_collision_sound = asset_server.load("sounds/gong.ogg");
     commands.insert_resource(StepSound(ball_collision_sound));
+
+    let ball_collision_sound = asset_server.load("sounds/A.ogg");
+    commands.insert_resource(ASound(ball_collision_sound));
+    let ball_collision_sound = asset_server.load("sounds/W.ogg");
+    commands.insert_resource(WSound(ball_collision_sound));
+    let ball_collision_sound = asset_server.load("sounds/D.ogg");
+    commands.insert_resource(DSound(ball_collision_sound));
+
+    commands.spawn((
+        TextBundle::from_section(
+            "",
+            TextStyle {
+                font_size: 100.0,
+                ..default()
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(20.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        PastKeys,
+    ));
 }
 
-fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPlayer>) {
+fn phah(
+    mut commands: Commands,
+    mut events: EventReader<KeyboardInput>,
+    mut sound_player: ResMut<SoundPlayer>,
+    a: Res<ASound>,
+    w: Res<WSound>,
+    d: Res<DSound>,
+) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             match event.key_code {
                 Some(KeyCode::A) => {
+                    commands.spawn(AudioBundle {
+                        source: a.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
                     sound_player.key_down(1);
                 }
-                Some(KeyCode::S) => {
+                Some(KeyCode::W) => {
+                    commands.spawn(AudioBundle {
+                        source: w.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
                     sound_player.key_down(2);
                 }
                 Some(KeyCode::D) => {
+                    commands.spawn(AudioBundle {
+                        source: d.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
+                    sound_player.key_down(3);
+                }
+                Some(KeyCode::O) => {
                     println!("start");
                     sound_player.start();
                 }
@@ -52,7 +110,20 @@ fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPl
     }
 }
 
-fn sound_timer(mut sound_player: ResMut<SoundPlayer>, commands: Commands, sound: Res<StepSound>) {
+fn sound_timer(
+    mut sound_player: ResMut<SoundPlayer>,
+    mut commands: Commands,
+    sound: Res<StepSound>,
+    mut query: Query<&mut Text, With<PastKeys>>,
+) {
+    for mut text in &mut query {
+        let mut s = "".to_owned();
+        for k in &sound_player.past_key {
+            s += k.to_string().as_str();
+        }
+        text.sections[0].value = s;
+    }
+
     sound_player.update(commands, sound);
 }
 
@@ -74,6 +145,9 @@ const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 
 #[derive(Component)]
 struct CounterText;
+
+#[derive(Component)]
+struct PastKeys;
 
 #[derive(Resource)]
 struct CounterNumber {
