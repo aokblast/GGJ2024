@@ -81,7 +81,7 @@ impl SoundPlayer {
         match action_type {
             ActionType::Attack => {
                 println!("Attack");
-                evt_w.send(AttackEvent(1,true));
+                evt_w.send(AttackEvent(1, true));
             }
             ActionType::Defence => {
                 println!("Defence");
@@ -90,6 +90,10 @@ impl SoundPlayer {
                 println!("Shoot");
             }
         }
+    }
+
+    fn fail(&self, evt_w: &mut EventWriter<AttackEvent>) {
+        evt_w.send(AttackEvent(1, false));
     }
 
     pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>) {
@@ -109,6 +113,7 @@ impl SoundPlayer {
 
         if remain > self.interval / 4 {
             println!("wrong");
+            self.fail(evt_w);
             self.past_key.clear();
             return;
         }
@@ -125,12 +130,14 @@ impl SoundPlayer {
 
         if missing_key < 1 {
             println!("too fast");
+            self.fail(evt_w);
             self.past_key.clear();
             return;
         }
 
         if missing_key > 1 {
             println!("too slow");
+            self.fail(evt_w);
             self.past_key.clear();
             return;
         }
@@ -149,6 +156,7 @@ impl SoundPlayer {
             self.do_action(&a.action_type, evt_w);
         } else if self.past_key.len() >= self.max_key {
             println!("wrong combo");
+            self.fail(evt_w);
             self.past_key.clear();
         }
     }
