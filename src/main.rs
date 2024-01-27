@@ -8,22 +8,41 @@ use bevy::{
 };
 use sound_player::*;
 
+#[derive(Resource)]
+pub struct WSound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct ASound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct DSound(pub Handle<AudioSource>);
+
 fn main() {
     App::new()
         .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, (phah,score_system).chain())
+        .add_systems(FixedUpdate, (phah, score_system).chain())
         .add_systems(Update, sound_timer)
-        .insert_resource(CounterNumber { score1: 0,score2:0 })
-        .insert_resource(ComboNumber{ score1: 0,score2:0 })
+        .insert_resource(CounterNumber {
+            score1: 0,
+            score2: 0,
+        })
+        .insert_resource(ComboNumber {
+            score1: 0,
+            score2: 0,
+        })
         .add_systems(Startup, setup_camera)
         .add_systems(
             Update,
-            ((counter1_update_system,
+            ((
+                counter1_update_system,
                 counter2_update_system,
                 Combo1_update_system,
-                Combo2_update_system)).chain())
+                Combo2_update_system,
+            ))
+                .chain(),
+        )
         .run();
 }
 
@@ -35,19 +54,69 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let ball_collision_sound = asset_server.load("sounds/gong.ogg");
     commands.insert_resource(StepSound(ball_collision_sound));
+
+    let ball_collision_sound = asset_server.load("sounds/A.ogg");
+    commands.insert_resource(ASound(ball_collision_sound));
+    let ball_collision_sound = asset_server.load("sounds/W.ogg");
+    commands.insert_resource(WSound(ball_collision_sound));
+    let ball_collision_sound = asset_server.load("sounds/D.ogg");
+    commands.insert_resource(DSound(ball_collision_sound));
+
+    commands.spawn((
+        TextBundle::from_section(
+            "",
+            TextStyle {
+                font_size: 100.0,
+                ..default()
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(20.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        PastKeys,
+    ));
 }
 
-fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPlayer>, mut evt_w: EventWriter<AttackEvent>) {
+fn phah(
+    mut commands: Commands,
+    mut events: EventReader<KeyboardInput>,
+    mut sound_player: ResMut<SoundPlayer>,
+    a: Res<ASound>,
+    w: Res<WSound>,
+    d: Res<DSound>,
+    mut evt_w: EventWriter<AttackEvent>,
+) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             match event.key_code {
                 Some(KeyCode::A) => {
+                    commands.spawn(AudioBundle {
+                        source: a.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
                     sound_player.key_down(1, &mut evt_w);
                 }
-                Some(KeyCode::S) => {
+                Some(KeyCode::W) => {
+                    commands.spawn(AudioBundle {
+                        source: w.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
                     sound_player.key_down(2, &mut evt_w);
                 }
                 Some(KeyCode::D) => {
+                    commands.spawn(AudioBundle {
+                        source: d.0.clone(),
+                        // auto-despawn the entity when playback finishes
+                        settings: PlaybackSettings::DESPAWN,
+                    });
+                    sound_player.key_down(3, &mut evt_w);
+                }
+                Some(KeyCode::O) => {
                     println!("start");
                     sound_player.start();
                 }
@@ -57,7 +126,20 @@ fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPl
     }
 }
 
-fn sound_timer(mut sound_player: ResMut<SoundPlayer>, commands: Commands, sound: Res<StepSound>) {
+fn sound_timer(
+    mut sound_player: ResMut<SoundPlayer>,
+    mut commands: Commands,
+    sound: Res<StepSound>,
+    mut query: Query<&mut Text, With<PastKeys>>,
+) {
+    for mut text in &mut query {
+        let mut s = "".to_owned();
+        for k in &sound_player.past_key {
+            s += k.to_string().as_str();
+        }
+        text.sections[0].value = s;
+    }
+
     sound_player.update(commands, sound);
 }
 
@@ -85,6 +167,9 @@ struct CounterText2;
 
 #[derive(Debug, Event)]
 struct AttackEvent(i32);
+
+#[derive(Component)]
+struct PastKeys;
 
 #[derive(Resource)]
 pub struct CounterNumber {
@@ -190,29 +275,27 @@ fn setup_camera(mut commands: Commands) {
         }),
         ComboText1,
     ));
-    commands.spawn((
-        TextBundle::from_sections([
-            TextSection::new(
-                "Player2:",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: COUNTER_COLOR,
-                    ..default()
-                },
-            ),
-            TextSection::from_style(TextStyle {
+    commands.spawn((TextBundle::from_sections([
+        TextSection::new(
+            "Player2:",
+            TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: COUNTER_COLOR,
                 ..default()
-            }),
-        ])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(5.0),
-            right: Val::Px(5.0),
+            },
+        ),
+        TextSection::from_style(TextStyle {
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: COUNTER_COLOR,
             ..default()
         }),
-    ));
+    ])
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(5.0),
+        right: Val::Px(5.0),
+        ..default()
+    }),));
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
@@ -277,14 +360,11 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
     }
 }
 pub fn score_system(
-        mut counter: ResMut<CounterNumber>,
-        mut combo: ResMut<ComboNumber>,
-        mut evt: EventReader<AttackEvent>,
-    ) {
-
-    for e in evt.read() {
-
-    }
+    mut counter: ResMut<CounterNumber>,
+    mut combo: ResMut<ComboNumber>,
+    mut evt: EventReader<AttackEvent>,
+) {
+    for e in evt.read() {}
 
     // if player == 1{
     //     if success{
@@ -303,7 +383,6 @@ pub fn score_system(
     // }
 }
 
-
 fn counter1_update_system(
     counter: Res<CounterNumber>,
     mut query: Query<&mut Text, With<CounterText1>>,
@@ -321,25 +400,16 @@ fn counter2_update_system(
     }
 }
 
-
-
-fn Combo1_update_system(
-    Combo: Res<ComboNumber>,
-    mut query: Query<&mut Text, With<ComboText1>>,
-) {
+fn Combo1_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText1>>) {
     for mut text in &mut query {
         text.sections[1].value = Combo.score1.to_string();
     }
 }
-fn Combo2_update_system(
-    Combo: Res<ComboNumber>,
-    mut query: Query<&mut Text, With<ComboText2>>,
-) {
+fn Combo2_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText2>>) {
     for mut text in &mut query {
         text.sections[1].value = Combo.score2.to_string();
     }
 }
-
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
 pub enum JustifyText {
