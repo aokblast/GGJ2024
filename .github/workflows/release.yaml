@@ -12,8 +12,8 @@ on:
 env:
   # TODO: rename
   # This variable is used to name release output files.
-  GAME_EXECUTABLE_NAME: GGJ-Tainan-Team-A
-  GAME_OSX_APP_NAME: GGJ-Tainan-Team-A
+  GAME_EXECUTABLE_NAME: ggj-2024
+  GAME_OSX_APP_NAME: ggj-2024
 
 permissions:
   contents: write
@@ -38,9 +38,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Remove build script
-        run: |
-          rm build.rs
       - name: Install rust toolchain for Apple Silicon
         uses: dtolnay/rust-toolchain@master
         with:
