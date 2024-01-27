@@ -84,7 +84,7 @@ struct CounterText1;
 struct CounterText2;
 
 #[derive(Debug, Event)]
-struct AttackEvent(i32);
+struct AttackEvent(i32,bool);
 
 #[derive(Resource)]
 pub struct CounterNumber {
@@ -283,24 +283,23 @@ pub fn score_system(
     ) {
 
     for e in evt.read() {
-
+        
+        if e.0 == 1{
+            if e.1{
+                counter.score1+=combo.score1+3;
+                combo.score1+=1;
+            }else{
+                combo.score1=0;
+            }
+        }else {
+            if e.1{
+                counter.score2+=combo.score2+3;
+                combo.score2+=1;
+            }else{
+                combo.score2=0;
+            }
+        }
     }
-
-    // if player == 1{
-    //     if success{
-    //         counter.score1+=combo.score1+3;
-    //         combo.score1+=1;
-    //     }else{
-    //         combo.score1=0;
-    //     }
-    // }else {
-    //     if success{
-    //         counter.score2+=combo.score2+3;
-    //         combo.score2+=1;
-    //     }else{
-    //         combo.score2=0;
-    //     }
-    // }
 }
 
 
