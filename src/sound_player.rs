@@ -95,7 +95,7 @@ impl SoundPlayer {
             remain = self.interval - remain;
         }
 
-        if remain > self.interval / 8 {
+        if remain > self.interval / 4 {
             println!("wrong");
             self.past_key.clear();
             return;
@@ -151,13 +151,10 @@ impl SoundPlayer {
         let since_the_epoch = start
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
-        if (since_the_epoch.as_millis() - self.start_time + self.interval / 2) / self.interval
-            <= self.last_step
-        {
+        if (since_the_epoch.as_millis() - self.start_time) / self.interval <= self.last_step {
             return false;
         }
-        self.last_step =
-            (since_the_epoch.as_millis() - self.start_time + self.interval / 2) / self.interval;
+        self.last_step = (since_the_epoch.as_millis() - self.start_time) / self.interval;
 
         // if self.action_start_time != 0 {
         //     let passing_keys = (since_the_epoch.as_millis() - self.action_start_time
