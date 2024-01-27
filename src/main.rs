@@ -21,9 +21,20 @@ fn main() {
     App::new()
         .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
+        .add_state::<AppState>()
         .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, (phah, score_system).chain())
+        .add_systems(OnEnter(AppState::Menu), setup_menu)
+        .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
+        .add_systems(OnExit(AppState::Menu), cleanup_menu)
+        .add_systems(OnEnter(AppState::InGame), setup_camera)
+        .add_systems(
+            FixedUpdate,
+            (phah, score_system)
+                .chain()
+                .run_if(in_state(AppState::InGame)),
+        )
         .add_systems(Update, sound_timer)
+        //.run_if(in_state(AppState::InGame))
         .insert_resource(CounterNumber {
             score1: 0,
             score2: 0,
@@ -32,21 +43,31 @@ fn main() {
             score1: 0,
             score2: 0,
         })
-        .add_systems(Startup, setup_camera)
+        //.add_systems(Startup, setup_camera)
         .add_systems(
             Update,
             ((
                 counter1_update_system,
                 counter2_update_system,
-                Combo1_update_system,
-                Combo2_update_system,
+                combo1_update_system,
+                combo2_update_system,
             ))
-                .chain(),
+                .chain()
+                .run_if(in_state(AppState::InGame)),
         )
         .run();
 }
 
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+enum AppState {
+    #[default]
+    Menu,
+    InGame,
+}
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2dBundle::default());
+
     let mut sound_player: SoundPlayer = SoundPlayer::new(1000);
     sound_player.add_action(Action::new(vec![1, 2, 2], ActionType::Attack));
 
@@ -78,6 +99,156 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
         PastKeys,
     ));
+}
+
+#[derive(Resource)]
+struct MenuData {
+    //game_title_entity:Entity,
+    button_single_player_entity: Entity,
+    button_double_player_entity: Entity,
+}
+
+const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
+const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
+const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
+
+fn setup_menu(mut commands: Commands) {
+    let game_title_ = commands
+        .spawn(NodeBundle {
+            style: Style {
+                // center button
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Start,
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "GAME NAME HERE",
+                TextStyle {
+                    font_size: 40.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
+                    ..default()
+                },
+            ));
+        });
+    let button_single_player_entity = commands
+        .spawn(NodeBundle {
+            style: Style {
+                // center button
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn(ButtonBundle {
+                    style: Style {
+                        width: Val::Px(200.),
+                        height: Val::Px(100.),
+                        // horizontally center child text
+                        justify_content: JustifyContent::Center,
+                        // vertically center child text
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    background_color: NORMAL_BUTTON.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "Single player",
+                        TextStyle {
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                            ..default()
+                        },
+                    ));
+                });
+        })
+        .id();
+    let button_double_player_entity = commands
+        .spawn(NodeBundle {
+            style: Style {
+                // center button
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::End,
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn(ButtonBundle {
+                    style: Style {
+                        width: Val::Px(200.),
+                        height: Val::Px(100.),
+                        // horizontally center child text
+                        justify_content: JustifyContent::Center,
+                        // vertically center child text
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    background_color: NORMAL_BUTTON.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "Double player",
+                        TextStyle {
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                            ..default()
+                        },
+                    ));
+                });
+        })
+        .id();
+    commands.insert_resource(MenuData {
+        button_single_player_entity,
+        button_double_player_entity,
+    });
+}
+
+fn menu(
+    mut next_state: ResMut<NextState<AppState>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                *color = PRESSED_BUTTON.into();
+                next_state.set(AppState::InGame);
+            }
+            Interaction::Hovered => {
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                *color = NORMAL_BUTTON.into();
+            }
+        }
+    }
+}
+
+fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
+    commands
+        .entity(menu_data.button_single_player_entity)
+        .despawn_recursive();
+    commands
+        .entity(menu_data.button_double_player_entity)
+        .despawn_recursive();
 }
 
 fn phah(
@@ -128,7 +299,7 @@ fn phah(
 
 fn sound_timer(
     mut sound_player: ResMut<SoundPlayer>,
-    mut commands: Commands,
+    commands: Commands,
     sound: Res<StepSound>,
     mut query: Query<&mut Text, With<PastKeys>>,
 ) {
@@ -141,13 +312,6 @@ fn sound_timer(
     }
 
     sound_player.update(commands, sound);
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum AppState {
-    MainMenu,
-    select,
-    InGame,
 }
 
 #[derive(Component)]
@@ -171,17 +335,17 @@ struct AttackEvent(i32, bool);
 #[derive(Component)]
 struct PastKeys;
 
-#[derive(Resource)]
-pub struct CounterNumber {
-    pub score1: usize,
-    pub score2: usize,
-}
-
 #[derive(Component)]
 struct ComboText1;
 
 #[derive(Component)]
 struct ComboText2;
+
+#[derive(Resource)]
+pub struct CounterNumber {
+    pub score1: usize,
+    pub score2: usize,
+}
 
 #[derive(Resource)]
 pub struct ComboNumber {
@@ -196,8 +360,6 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn((
         Camera2dBundle {
             camera_2d: Camera2d {
-                // disable clearing completely (pixels stay as they are)
-                // (preserves output from previous frame or camera/pass)
                 clear_color: ClearColorConfig::Custom(Color::rgb(0.5, 0.2, 0.2)),
             },
             transform: Transform::from_xyz(100.0, 200.0, 0.0),
@@ -205,28 +367,22 @@ fn setup_camera(mut commands: Commands) {
         },
         MyCameraMarker,
     ));
-    commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "PaTaPon!",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                //font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: 100.0,
-                ..default()
-            },
-        ) // Set the justification of the Text
-        //.with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(5.0),
-            right: Val::Px(5.0),
-            ..default()
-        }),
-        Colortext,
-    ));
+    // commands.spawn((
+    //     TextBundle::from_section(
+    //         "PaTaPon!",
+    //         TextStyle {
+    //             font_size: 100.0,
+    //             ..default()
+    //         },
+    //     )
+    //     .with_style(Style {
+    //         position_type: PositionType::Absolute,
+    //         bottom: Val::Px(5.0),
+    //         top: Val::Px(5.0),
+    //         ..default()
+    //     }),
+    //     Colortext,
+    // ));
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
@@ -359,6 +515,7 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
         };
     }
 }
+
 pub fn score_system(
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
@@ -400,14 +557,14 @@ fn counter2_update_system(
     }
 }
 
-fn Combo1_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText1>>) {
+fn combo1_update_system(oombo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText1>>) {
     for mut text in &mut query {
-        text.sections[1].value = Combo.score1.to_string();
+        text.sections[1].value = oombo.score1.to_string();
     }
 }
-fn Combo2_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText2>>) {
+fn combo2_update_system(combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText2>>) {
     for mut text in &mut query {
-        text.sections[1].value = Combo.score2.to_string();
+        text.sections[1].value = combo.score2.to_string();
     }
 }
 
