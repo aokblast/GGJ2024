@@ -1,6 +1,7 @@
 mod sound_player;
 
 use bevy::core_pipeline::clear_color::ClearColorConfig;
+use bevy::math::bool;
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
@@ -9,16 +10,20 @@ use sound_player::*;
 
 fn main() {
     App::new()
+        .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, phah)
+        .add_systems(FixedUpdate, (phah,score_system).chain())
         .add_systems(Update, sound_timer)
-        .insert_resource(CounterNumber { score: 123 })
+        .insert_resource(CounterNumber { score1: 0,score2:0 })
+        .insert_resource(ComboNumber{ score1: 0,score2:0 })
         .add_systems(Startup, setup_camera)
         .add_systems(
             Update,
-            (counter_system, (counter_update_system, text_color_system)).chain(),
-        )
+            ((counter1_update_system,
+                counter2_update_system,
+                Combo1_update_system,
+                Combo2_update_system)).chain())
         .run();
 }
 
@@ -32,15 +37,15 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(StepSound(ball_collision_sound));
 }
 
-fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPlayer>) {
+fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPlayer>, mut evt_w: EventWriter<AttackEvent>) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             match event.key_code {
                 Some(KeyCode::A) => {
-                    sound_player.key_down(1);
+                    sound_player.key_down(1, &mut evt_w);
                 }
                 Some(KeyCode::S) => {
-                    sound_player.key_down(2);
+                    sound_player.key_down(2, &mut evt_w);
                 }
                 Some(KeyCode::D) => {
                     println!("start");
@@ -73,11 +78,30 @@ const COUNTER_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 
 #[derive(Component)]
-struct CounterText;
+struct CounterText1;
+
+#[derive(Component)]
+struct CounterText2;
+
+#[derive(Debug, Event)]
+struct AttackEvent(i32);
 
 #[derive(Resource)]
-struct CounterNumber {
-    score: usize,
+pub struct CounterNumber {
+    pub score1: usize,
+    pub score2: usize,
+}
+
+#[derive(Component)]
+struct ComboText1;
+
+#[derive(Component)]
+struct ComboText2;
+
+#[derive(Resource)]
+pub struct ComboNumber {
+    pub score1: usize,
+    pub score2: usize,
 }
 
 #[derive(Resource)]
@@ -121,6 +145,77 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
+                "Player1\nScore: ",
+                TextStyle {
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: COUNTER_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: COUNTER_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(5.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        CounterText1,
+    ));
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "Combo: ",
+                TextStyle {
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: COUNTER_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: COUNTER_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(80.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        ComboText1,
+    ));
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "Player2:",
+                TextStyle {
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: COUNTER_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: COUNTER_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(5.0),
+            right: Val::Px(5.0),
+            ..default()
+        }),
+    ));
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
                 "Score: ",
                 TextStyle {
                     font_size: SCOREBOARD_FONT_SIZE,
@@ -133,8 +228,38 @@ fn setup_camera(mut commands: Commands) {
                 color: COUNTER_COLOR,
                 ..default()
             }),
-        ]),
-        CounterText,
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(40.0),
+            right: Val::Px(5.0),
+            ..default()
+        }),
+        CounterText2,
+    ));
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "Combo: ",
+                TextStyle {
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: COUNTER_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: COUNTER_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(80.0),
+            right: Val::Px(5.0),
+            ..default()
+        }),
+        ComboText2,
     ));
 }
 
@@ -151,28 +276,70 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
         };
     }
 }
-fn counter_system(mut counterboard: ResMut<CounterNumber>) {
-    if true {
-        //attack deals demage
-        counterboard.score += 1;
+pub fn score_system(
+        mut counter: ResMut<CounterNumber>,
+        mut combo: ResMut<ComboNumber>,
+        mut evt: EventReader<AttackEvent>,
+    ) {
+
+    for e in evt.read() {
+
+    }
+
+    // if player == 1{
+    //     if success{
+    //         counter.score1+=combo.score1+3;
+    //         combo.score1+=1;
+    //     }else{
+    //         combo.score1=0;
+    //     }
+    // }else {
+    //     if success{
+    //         counter.score2+=combo.score2+3;
+    //         combo.score2+=1;
+    //     }else{
+    //         combo.score2=0;
+    //     }
+    // }
+}
+
+
+fn counter1_update_system(
+    counter: Res<CounterNumber>,
+    mut query: Query<&mut Text, With<CounterText1>>,
+) {
+    for mut text in &mut query {
+        text.sections[1].value = counter.score1.to_string();
+    }
+}
+fn counter2_update_system(
+    counter: Res<CounterNumber>,
+    mut query: Query<&mut Text, With<CounterText2>>,
+) {
+    for mut text in &mut query {
+        text.sections[1].value = counter.score2.to_string();
     }
 }
 
-fn counter_update_system(
-    counter: Res<CounterNumber>,
-    mut query: Query<&mut Text, With<CounterText>>,
+
+
+fn Combo1_update_system(
+    Combo: Res<ComboNumber>,
+    mut query: Query<&mut Text, With<ComboText1>>,
 ) {
     for mut text in &mut query {
-        text.sections[1].value = counter.score.to_string();
+        text.sections[1].value = Combo.score1.to_string();
     }
 }
-// fn text_update_system(scoreboard: Res<Scoreboard>,mut query: Query<&mut Text, With<CounterText>>) {
-//     for mut text in &mut query {
-//         let mut value = query.single_mut();
-//         // Update counter to  value of the second section
-//         text.sections[1].value = scoreboard.score.to_string()
-//     }
-// }
+fn Combo2_update_system(
+    Combo: Res<ComboNumber>,
+    mut query: Query<&mut Text, With<ComboText2>>,
+) {
+    for mut text in &mut query {
+        text.sections[1].value = Combo.score2.to_string();
+    }
+}
+
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
 pub enum JustifyText {
