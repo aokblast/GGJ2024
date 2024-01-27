@@ -17,7 +17,6 @@ use dlopen2::wrapper::Container;
 use plugins::art::{self, artPlugin, create_people_system};
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
-use ringcon::{test_ringcon, PullVal, RingConApi};
 use sound_player::*;
 use std::thread;
 use std::time::Duration;
@@ -48,7 +47,7 @@ fn main() {
         .add_plugins(TweeningPlugin)
         // our plugins
         .add_plugins((JumpImagePlugin, GameLevelUiPlugin, SoundSystemPlugin))
-        .add_plugins((artPlugin))
+        .add_plugins(artPlugin)
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))

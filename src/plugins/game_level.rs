@@ -28,7 +28,7 @@ fn add_game_level_ui(mut commands: Commands) {
     });
 }
 
-fn remove_game_level_ui(mut commands: Commands, query: Query<Entity, With<GameUi>>) {
+fn remove_game_level_ui<T: Component>(mut commands: Commands, query: Query<Entity, With<T>>) {
     for ent in &query {
         commands.entity(ent).despawn();
     }
@@ -37,6 +37,6 @@ fn remove_game_level_ui(mut commands: Commands, query: Query<Entity, With<GameUi
 impl Plugin for GameLevelUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::InGame), add_game_level_ui)
-            .add_systems(OnExit(AppState::InGame), remove_game_level_ui);
+            .add_systems(OnExit(AppState::InGame), remove_game_level_ui::<GameUi>);
     }
 }
