@@ -6,9 +6,6 @@ use bevy::{
 };
 use sound_player::*;
 
-#[derive(Resource)]
-struct StepSound(Handle<AudioSource>);
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -48,16 +45,6 @@ fn phah(mut events: EventReader<KeyboardInput>, mut sound_player: ResMut<SoundPl
     }
 }
 
-fn sound_timer(
-    mut sound_player: ResMut<SoundPlayer>,
-    mut commands: Commands,
-    sound: Res<StepSound>,
-) {
-    if sound_player.update() {
-        commands.spawn(AudioBundle {
-            source: sound.0.clone(),
-            // auto-despawn the entity when playback finishes
-            settings: PlaybackSettings::DESPAWN,
-        });
-    }
+fn sound_timer(mut sound_player: ResMut<SoundPlayer>, commands: Commands, sound: Res<StepSound>) {
+    sound_player.update(commands, sound);
 }

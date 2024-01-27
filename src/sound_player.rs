@@ -14,6 +14,9 @@ pub struct Action {
 }
 
 #[derive(Resource)]
+pub struct StepSound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
 pub struct SoundPlayer {
     actions: Vec<Action>,
     interval: u128,
@@ -143,7 +146,11 @@ impl SoundPlayer {
         self.has_started = false;
     }
 
-    pub fn update(&mut self) -> bool {
+    pub fn update(
+        &mut self,
+        mut commands: Commands,
+        sound: Res<StepSound>,
+    ) -> bool {
         if !self.has_started {
             return false;
         }
@@ -155,6 +162,12 @@ impl SoundPlayer {
             return false;
         }
         self.last_step = (since_the_epoch.as_millis() - self.start_time) / self.interval;
+
+        commands.spawn(AudioBundle {
+            source: sound.0.clone(),
+            // auto-despawn the entity when playback finishes
+            settings: PlaybackSettings::DESPAWN,
+        });
 
         // if self.action_start_time != 0 {
         //     let passing_keys = (since_the_epoch.as_millis() - self.action_start_time
