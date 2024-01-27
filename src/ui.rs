@@ -1,25 +1,6 @@
-use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::query;
 use bevy::prelude::*;
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .insert_resource(CounterNumber { score: 123 })
-        .add_systems(Startup, setup_camera)
-        .add_systems(
-            Update,
-            (counter_system, (counter_update_system, text_color_system)).chain(),
-        )
-        .run();
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum AppState {
-    MainMenu,
-    select,
-    InGame,
-}
+use bevy::core_pipeline::clear_color::ClearColorConfig;
 
 #[derive(Component)]
 struct MyCameraMarker;
@@ -34,8 +15,8 @@ const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 struct CounterText;
 
 #[derive(Resource)]
-struct CounterNumber {
-    score: usize,
+struct CounterNumber{
+    score: usize, 
 }
 
 #[derive(Resource)]
@@ -76,23 +57,23 @@ fn setup_camera(mut commands: Commands) {
         }),
         Colortext,
     ));
-    commands.spawn((
-        TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: COUNTER_COLOR,
-                    ..default()
-                },
-            ),
-            TextSection::from_style(TextStyle {
+    commands.spawn(
+    (TextBundle::from_sections([
+        TextSection::new(
+            "Score: ",
+            TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: COUNTER_COLOR,
                 ..default()
-            }),
-        ]),
-        CounterText,
+            },
+        ),
+        TextSection::from_style(TextStyle {
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: COUNTER_COLOR,
+            ..default()
+        }),
+    ]),
+    CounterText,
     ));
 }
 
@@ -109,17 +90,13 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
         };
     }
 }
-fn counter_system(mut counterboard: ResMut<CounterNumber>) {
-    if true {
-        //attack deals demage
-        counterboard.score += 1;
+fn counter_system(mut counterboard: ResMut<CounterNumber>){
+    if true { //attack deals demage
+        counterboard.score+=1;
     }
 }
 
-fn counter_update_system(
-    counter: Res<CounterNumber>,
-    mut query: Query<&mut Text, With<CounterText>>,
-) {
+fn counter_update_system(counter: Res<CounterNumber> , mut query: Query<&mut Text,With<CounterText>>) {
     for mut text in &mut query {
         text.sections[1].value = counter.score.to_string();
     }
@@ -132,7 +109,7 @@ fn counter_update_system(
 //     }
 // }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]//+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
 pub enum JustifyText {
     /// Leftmost character is immediately to the right of the render position.
     /// Bounds start from the render position and advance rightwards.
