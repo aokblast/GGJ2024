@@ -22,17 +22,27 @@ fn main() {
         .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(FixedUpdate, (phah,score_system).chain())
+        .add_systems(FixedUpdate, (phah, score_system).chain())
         .add_systems(Update, sound_timer)
-        .insert_resource(CounterNumber { score1: 0,score2:0 })
-        .insert_resource(ComboNumber{ score1: 0,score2:0 })
+        .insert_resource(CounterNumber {
+            score1: 0,
+            score2: 0,
+        })
+        .insert_resource(ComboNumber {
+            score1: 0,
+            score2: 0,
+        })
         .add_systems(Startup, setup_camera)
         .add_systems(
             Update,
-            ((counter1_update_system,
+            ((
+                counter1_update_system,
                 counter2_update_system,
                 Combo1_update_system,
-                Combo2_update_system)).chain())
+                Combo2_update_system,
+            ))
+                .chain(),
+        )
         .run();
 }
 
@@ -265,29 +275,27 @@ fn setup_camera(mut commands: Commands) {
         }),
         ComboText1,
     ));
-    commands.spawn((
-        TextBundle::from_sections([
-            TextSection::new(
-                "Player2:",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: COUNTER_COLOR,
-                    ..default()
-                },
-            ),
-            TextSection::from_style(TextStyle {
+    commands.spawn((TextBundle::from_sections([
+        TextSection::new(
+            "Player2:",
+            TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: COUNTER_COLOR,
                 ..default()
-            }),
-        ])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(5.0),
-            right: Val::Px(5.0),
+            },
+        ),
+        TextSection::from_style(TextStyle {
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: COUNTER_COLOR,
             ..default()
         }),
-    ));
+    ])
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(5.0),
+        right: Val::Px(5.0),
+        ..default()
+    }),));
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
@@ -352,14 +360,11 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
     }
 }
 pub fn score_system(
-        mut counter: ResMut<CounterNumber>,
-        mut combo: ResMut<ComboNumber>,
-        mut evt: EventReader<AttackEvent>,
-    ) {
-
-    for e in evt.read() {
-
-    }
+    mut counter: ResMut<CounterNumber>,
+    mut combo: ResMut<ComboNumber>,
+    mut evt: EventReader<AttackEvent>,
+) {
+    for e in evt.read() {}
 
     // if player == 1{
     //     if success{
@@ -378,7 +383,6 @@ pub fn score_system(
     // }
 }
 
-
 fn counter1_update_system(
     counter: Res<CounterNumber>,
     mut query: Query<&mut Text, With<CounterText1>>,
@@ -396,25 +400,16 @@ fn counter2_update_system(
     }
 }
 
-
-
-fn Combo1_update_system(
-    Combo: Res<ComboNumber>,
-    mut query: Query<&mut Text, With<ComboText1>>,
-) {
+fn Combo1_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText1>>) {
     for mut text in &mut query {
         text.sections[1].value = Combo.score1.to_string();
     }
 }
-fn Combo2_update_system(
-    Combo: Res<ComboNumber>,
-    mut query: Query<&mut Text, With<ComboText2>>,
-) {
+fn Combo2_update_system(Combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText2>>) {
     for mut text in &mut query {
         text.sections[1].value = Combo.score2.to_string();
     }
 }
-
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
 pub enum JustifyText {
