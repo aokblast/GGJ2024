@@ -67,6 +67,7 @@ fn main() {
             GameLevelUiPlugin,
             SoundSystemPlugin,
             CharacterSelectionPlugin,
+            RingConPlugin,
         ))
         .add_plugins(artPlugin)
         .add_systems(Startup, setup)

@@ -67,8 +67,9 @@ pub enum RingConEvent {
 
 impl RingConRS {
     fn new() -> Self {
+        let dll_path = "./ringcon_driver.dll";
         Self {
-            container: unsafe { Container::load("./ringcon_driver.dll") }.unwrap(),
+            container: unsafe { Container::load(dll_path) }.unwrap(),
             timer: Timer::new(Duration::from_millis(33), TimerMode::Repeating),
             squat_timer: Timer::new(Duration::from_millis(SQUATTING_TIME), TimerMode::Repeating),
             squat_rs: SquatRS::default(),
