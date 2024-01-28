@@ -349,6 +349,7 @@ fn phah(
     w: Res<WSound>,
     d: Res<DSound>,
     mut evt_w: EventWriter<AttackEvent>,
+    mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
 ) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
@@ -402,7 +403,7 @@ fn phah(
                 }
                 if event.key_code == Some(KeyCode::O) {
                     println!("start");
-                    sound_player.start();
+                    sound_player.start(&mut sound_start_evt_w);
                 }
             }
         }

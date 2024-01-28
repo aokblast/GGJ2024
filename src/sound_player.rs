@@ -7,7 +7,7 @@ use rand::Rng;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::vec;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum ActionType {
     Player1,
     Player2,
@@ -20,6 +20,9 @@ pub struct Action {
 
 #[derive(Component)]
 pub struct Sound(pub Handle<AudioSource>);
+
+#[derive(Event)]
+pub struct SoundPlayerStart(pub ActionType);
 
 #[derive(Component)]
 pub struct SoundPlayer {
@@ -73,7 +76,7 @@ impl SoundPlayer {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self, evt_w: &mut EventWriter<SoundPlayerStart>) {
         let start = SystemTime::now();
         let since_the_epoch = start
             .duration_since(UNIX_EPOCH)
@@ -81,6 +84,8 @@ impl SoundPlayer {
         self.start_time = since_the_epoch.as_millis();
         self.reroll();
         self.has_started = true;
+
+        evt_w.send(SoundPlayerStart(self.action.action_type));
     }
 
     fn reroll(&mut self) {
@@ -202,9 +207,14 @@ pub struct SoundSystemPlugin;
 
 impl Plugin for SoundSystemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_event::<SoundPlayerStart>().add_systems(
             Update,
-            (produce_beat_system, move_beat_system).run_if(in_state(AppState::InGame)),
+            (
+                produce_beat_system,
+                move_beat_system,
+                produce_beat_on_player_start,
+            )
+                .run_if(in_state(AppState::InGame)),
         );
     }
 }
@@ -253,6 +263,29 @@ fn produce_beat_system(
                         duration,
                     });
                 }
+            }
+        }
+    }
+}
+
+fn produce_beat_on_player_start(mut evt: EventReader<SoundPlayerStart>, mut commands: Commands) {
+    // FIXME: hard-coded
+    let duration = Duration::from_millis(1000);
+    for e in evt.read() {
+        match e.0 {
+            ActionType::Player1 => {
+                commands.spawn(MoveBeat {
+                    from: BEAT_START,
+                    to: BEAT_END_P1,
+                    duration,
+                });
+            }
+            ActionType::Player2 => {
+                commands.spawn(MoveBeat {
+                    from: BEAT_START,
+                    to: BEAT_END_P2,
+                    duration,
+                });
             }
         }
     }
