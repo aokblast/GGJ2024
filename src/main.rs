@@ -9,11 +9,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ringcon::RingConEvent;
 use bevy::app::AppExit;
+use bevy::input::{keyboard::KeyboardInput, ButtonState};
 use bevy::math::bool;
 use bevy::prelude::*;
-use bevy::{
-    input::{keyboard::KeyboardInput, ButtonState},
-};
 use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
 use plugins::art::ArtPlugin;
@@ -214,17 +212,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
 }
 
-#[derive(Resource)]
-struct MenuData {
-    //game_title_entity:Entity,
-    button_single_player_entity: Entity,
-    button_double_player_entity: Entity,
-}
-
-const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
-
 #[derive(Debug, Component)]
 struct StartMenuTag;
 
@@ -337,21 +324,21 @@ fn phah(
         for mut sound_player in &mut query {
             match sound_player.action.action_type {
                 ActionType::Player1 => match event {
-                    RingConEvent::PUSH => {
+                    RingConEvent::Push => {
                         commands.spawn(AudioBundle {
                             source: a.0.clone(),
                             settings: PlaybackSettings::DESPAWN,
                         });
                         sound_player.key_down(1, &mut evt_w, true);
                     }
-                    RingConEvent::POLL => {
+                    RingConEvent::Pull => {
                         commands.spawn(AudioBundle {
                             source: w.0.clone(),
                             settings: PlaybackSettings::DESPAWN,
                         });
                         sound_player.key_down(2, &mut evt_w, true);
                     }
-                    RingConEvent::SD => {
+                    RingConEvent::Squat => {
                         commands.spawn(AudioBundle {
                             source: d.0.clone(),
                             settings: PlaybackSettings::DESPAWN,

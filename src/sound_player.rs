@@ -165,7 +165,7 @@ impl SoundPlayer {
             self.past_key.clear();
         }
 
-        if vec_compare(&self.action.keys, &self.past_key) {
+        if self.action.keys == self.past_key {
             self.past_key.clear();
             Self::do_action(&self.action.action_type, evt_w);
             self.reroll();
@@ -182,7 +182,7 @@ impl SoundPlayer {
         }
         self.action_last_time = self.action_start_time;
         self.action_start_time = time;
-        let start = SystemTime::now();
+        let _start = SystemTime::now();
 
         if (time - self.start_time) / self.interval <= self.last_step {
             return false;

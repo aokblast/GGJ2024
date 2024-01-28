@@ -1,5 +1,5 @@
-use crate::ringcon::RingConEvent::SD;
-use crate::ringcon::SquattingStates::{DOING, DONE, NO};
+use crate::ringcon::RingConEvent::Squat;
+use crate::ringcon::SquattingStates::{Doing, Done, No};
 use bevy::app::{App, Plugin, Startup};
 use bevy::prelude::{Event, EventWriter, Res, ResMut, Resource, Update};
 use bevy::time::{Time, Timer, TimerMode};
@@ -15,17 +15,12 @@ const PULLING_THRESHOLD: i32 = 2;
 const SQUATTING_TIME: u64 = 500;
 const SQUATTING_THRESHOLD: f64 = 0.5;
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
 enum SquattingStates {
-    NO,
-    DOING,
-    DONE,
-}
-
-impl Default for SquattingStates {
-    fn default() -> Self {
-        NO
-    }
+    #[default]
+    No,
+    Doing,
+    Done,
 }
 
 #[derive(WrapperApi)]
@@ -58,9 +53,9 @@ struct SquatRS {
 
 #[derive(Event, Eq, PartialEq, Copy, Clone)]
 pub enum RingConEvent {
-    PUSH,
-    POLL,
-    SD,
+    Push,
+    Pull,
+    Squat,
 }
 
 impl RingConRS {
@@ -92,17 +87,16 @@ fn pull_ringcon_system(
     api.timer.tick(time.delta());
     if api.timer.finished() {
         unsafe {
-            api.container
-                .poll_ringcon( &mut res as *mut PullVal);
+            api.container.poll_ringcon(&mut res as *mut PullVal);
         }
 
         println!("{}", res.push_val);
 
         let detected_key = {
             if res.push_val >= PUSHING_THRESHOLD {
-                Some(RingConEvent::PUSH)
+                Some(RingConEvent::Push)
             } else if res.push_val <= PULLING_THRESHOLD {
-                Some(RingConEvent::POLL)
+                Some(RingConEvent::Pull)
             } else {
                 None
             }
@@ -123,7 +117,7 @@ fn pull_ringcon_system(
         api.ring_stat = detected_key;
     }
 
-    if api.squat_rs.stat == DOING {
+    if api.squat_rs.stat == Doing {
         if res.squatting {
             api.squat_rs.sq += 1;
         }
@@ -135,23 +129,23 @@ fn pull_ringcon_system(
     if api.squat_timer.finished() {
         let mut stat = api.squat_rs.stat;
 
-        if stat == DOING {
+        if stat == Doing {
             if (api.squat_rs.sq as f64 / api.squat_rs.nsq as f64) >= SQUATTING_THRESHOLD {
-                stat = DONE;
+                stat = Done;
             } else {
-                stat = NO;
+                stat = No;
             }
         }
 
-        if stat == NO {
+        if stat == No {
             if res.squatting {
-                stat = DOING;
+                stat = Doing;
                 api.squat_rs.sq = 0;
                 api.squat_rs.nsq = 0;
             }
-        } else if stat == DONE {
-            event.send(SD);
-            stat = NO;
+        } else if stat == Done {
+            event.send(Squat);
+            stat = No;
             api.squat_rs.sq = 0;
             api.squat_rs.nsq = 0;
         }
