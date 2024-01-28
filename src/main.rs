@@ -34,7 +34,14 @@ pub struct DSound(pub Handle<AudioSource>);
 fn main() {
     App::new()
         .add_event::<AttackEvent>()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (1920., 1080.).into(),
+                resizable: false,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
         .add_state::<AppState>()
         // third-party plugins
         .add_plugins(TweeningPlugin)
@@ -485,6 +492,10 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background = asset_server.load("images/background.png");
     commands.spawn(SpriteBundle {
         texture: background,
+        transform: Transform {
+            translation: Vec3::new(0., 0., -10.),
+            ..default()
+        },
         ..Default::default()
     });
     // commands.spawn((
