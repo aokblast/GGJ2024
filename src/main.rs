@@ -3,10 +3,6 @@ mod plugins;
 mod ringcon;
 mod sound_player;
 
-use std::time::Duration;
-
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::ringcon::RingConEvent;
 use bevy::app::AppExit;
 use bevy::input::{keyboard::KeyboardInput, ButtonState};
@@ -17,8 +13,10 @@ use config::ImageKey;
 use plugins::art::ArtPlugin;
 use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
+use plugins::input::GameInputPlugin;
 use plugins::start_menu::StartMenuPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
+use ringcon::RingConPlugin;
 use sound_player::*;
 
 #[derive(Debug, Event)]
@@ -52,17 +50,18 @@ fn main() {
             SoundSystemPlugin,
             CharacterSelectionPlugin,
             StartMenuPlugin,
-            #[cfg(target_os = "windos")]
+            GameInputPlugin,
+            ArtPlugin,
+            #[cfg(target_os = "windows")]
             RingConPlugin,
         ))
-        .add_plugins(ArtPlugin)
         .add_systems(Startup, |mut commands: Commands| {
             commands.spawn(Camera2dBundle::default());
         })
-        .add_systems(OnEnter(AppState::InGame), setup_camera)
+        .add_systems(OnEnter(AppState::InGame), setup_in_game_ui)
         .add_systems(
             FixedUpdate,
-            (phah, score_system)
+            (/* phah, */score_system)
                 .chain()
                 .run_if(in_state(AppState::InGame)),
         )
@@ -100,48 +99,7 @@ enum AppState {
     InGame,
 }
 
-fn phah(
-    mut commands: Commands,
-    mut events: EventReader<KeyboardInput>,
-    mut ringcon_evt: EventReader<RingConEvent>,
-    mut query: Query<&mut SoundPlayer>,
-    a: Res<ASound>,
-    w: Res<WSound>,
-    d: Res<DSound>,
-    mut evt_w: EventWriter<AttackEvent>,
-    mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
-    mut evt_exit: EventWriter<AppExit>,
-) {
-    for event in ringcon_evt.read() {
-        for mut sound_player in &mut query {
-            match sound_player.action.action_type {
-                ActionType::Player1 => match event {
-                    RingConEvent::Push => {
-                        commands.spawn(AudioBundle {
-                            source: a.0.clone(),
-                            settings: PlaybackSettings::DESPAWN,
-                        });
-                        sound_player.key_down(1, &mut evt_w, true);
-                    }
-                    RingConEvent::Pull => {
-                        commands.spawn(AudioBundle {
-                            source: w.0.clone(),
-                            settings: PlaybackSettings::DESPAWN,
-                        });
-                        sound_player.key_down(2, &mut evt_w, true);
-                    }
-                    RingConEvent::Squat => {
-                        commands.spawn(AudioBundle {
-                            source: d.0.clone(),
-                            settings: PlaybackSettings::DESPAWN,
-                        });
-                        sound_player.key_down(3, &mut evt_w, true);
-                    }
-                },
-                _ => {}
-            }
-        }
-    }
+fn phah(mut commands: Commands, mut events: EventReader<KeyboardInput>) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             if event.key_code == Some(KeyCode::Space) {
@@ -151,11 +109,6 @@ fn phah(
                     to: Vec2::new(-240., 0.),
                 });
             }
-
-            if event.key_code == Some(KeyCode::Escape) {
-                evt_exit.send(AppExit);
-            }
-
             if event.key_code == Some(KeyCode::G) {
                 commands.spawn(JumpImage {
                     key: ImageKey::GenShinStart,
@@ -184,63 +137,6 @@ fn phah(
                     to: Vec2::new(-240., 0.),
                 });
             }
-            for mut sound_player in &mut query {
-                match sound_player.action.action_type {
-                    ActionType::Player1 => match event.key_code {
-                        Some(KeyCode::A) => {
-                            commands.spawn(AudioBundle {
-                                source: a.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(1, &mut evt_w, false);
-                        }
-                        Some(KeyCode::W) => {
-                            commands.spawn(AudioBundle {
-                                source: w.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(2, &mut evt_w, false);
-                        }
-                        Some(KeyCode::D) => {
-                            commands.spawn(AudioBundle {
-                                source: d.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(3, &mut evt_w, false);
-                        }
-                        _ => {}
-                    },
-                    ActionType::Player2 => match event.key_code {
-                        Some(KeyCode::G) => {
-                            commands.spawn(AudioBundle {
-                                source: a.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(1, &mut evt_w, false);
-                        }
-                        Some(KeyCode::Y) => {
-                            commands.spawn(AudioBundle {
-                                source: w.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(2, &mut evt_w, false);
-                        }
-                        Some(KeyCode::J) => {
-                            commands.spawn(AudioBundle {
-                                source: d.0.clone(),
-                                settings: PlaybackSettings::DESPAWN,
-                            });
-                            sound_player.key_down(3, &mut evt_w, false);
-                        }
-                        _ => {}
-                    },
-                }
-
-                if event.key_code == Some(KeyCode::O) {
-                    println!("start");
-                    sound_player.start(&mut sound_start_evt_w);
-                }
-            }
         }
     }
 }
@@ -256,9 +152,6 @@ struct CounterText2;
 
 #[derive(Debug, Event)]
 struct AttackEvent(i32, bool);
-
-#[derive(Component)]
-struct PastKeys;
 
 #[derive(Component)]
 struct ComboText1;
@@ -278,7 +171,7 @@ pub struct ComboNumber {
     pub score2: usize,
 }
 
-fn setup_camera(
+fn setup_in_game_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut evt_w: EventWriter<GenEvent>,

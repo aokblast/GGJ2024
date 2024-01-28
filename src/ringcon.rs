@@ -157,8 +157,8 @@ fn pull_ringcon_system(
 impl Plugin for RingConPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RingConRS::new())
-            .add_systems(Startup, ringcon_init)
-            .add_systems(Update, pull_ringcon_system)
+            // .add_systems(Startup, ringcon_init)
+            // .add_systems(Update, pull_ringcon_system)
             .add_event::<RingConEvent>();
     }
 }

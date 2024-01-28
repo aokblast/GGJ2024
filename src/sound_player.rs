@@ -1,5 +1,7 @@
 use crate::config::ImageKey;
+use crate::plugins::input::{PlayerCommand, PlayerCommandEvent};
 use crate::{AppState, AttackEvent};
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseMethod, Tween};
@@ -14,6 +16,7 @@ impl Plugin for SoundSystemPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SoundPlayerStart>()
             .add_systems(Startup, setup_sound_system)
+            .add_systems(OnEnter(AppState::InGame), start_sound_player)
             .add_systems(
                 Update,
                 (
@@ -21,6 +24,8 @@ impl Plugin for SoundSystemPlugin {
                     move_beat_system,
                     produce_beat_on_player_start,
                     sound_timer,
+                    check_key_down,
+                    player_hit_sound_system,
                 )
                     .run_if(in_state(AppState::InGame)),
             );
@@ -363,6 +368,83 @@ fn sound_timer(
         }
         if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.goal_text_id) {
             text.sections[0].value = s;
+        }
+    }
+}
+
+fn check_key_down(
+    mut player_command_evt: EventReader<PlayerCommandEvent>,
+    mut query: Query<&mut SoundPlayer>,
+    mut attack_evt_w: EventWriter<AttackEvent>,
+) {
+    for e in player_command_evt.read() {
+        let action_type = if e.team == 1 {
+            ActionType::Player1
+        } else {
+            ActionType::Player2
+        };
+        let key = match e.cmd {
+            PlayerCommand::Hit1 => 1,
+            PlayerCommand::Hit2 => 2,
+            PlayerCommand::Hit3 => 3,
+            PlayerCommand::Exit => {
+                continue;
+            }
+        };
+
+        for mut player in &mut query {
+            if player.action.action_type == action_type {
+                player.key_down(key, &mut attack_evt_w, false);
+                break;
+            }
+        }
+    }
+}
+
+fn start_sound_player(
+    mut query: Query<&mut SoundPlayer>,
+    mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
+) {
+    for mut sound_player in &mut query {
+        sound_player.start(&mut sound_start_evt_w);
+    }
+}
+
+fn player_hit_sound_system(
+    mut player_command_evt: EventReader<PlayerCommandEvent>,
+    a: Res<ASound>,
+    w: Res<WSound>,
+    d: Res<DSound>,
+    mut commands: Commands,
+) {
+    let hit_sound_settings = PlaybackSettings {
+        mode: PlaybackMode::Despawn,
+        // TODO: custom volume
+        volume: Volume::new_relative(2.5),
+        ..Default::default()
+    };
+
+    for e in player_command_evt.read() {
+        match e.cmd {
+            PlayerCommand::Hit1 => {
+                commands.spawn(AudioBundle {
+                    source: a.0.clone(),
+                    settings: hit_sound_settings,
+                });
+            }
+            PlayerCommand::Hit2 => {
+                commands.spawn(AudioBundle {
+                    source: w.0.clone(),
+                    settings: hit_sound_settings,
+                });
+            }
+            PlayerCommand::Hit3 => {
+                commands.spawn(AudioBundle {
+                    source: d.0.clone(),
+                    settings: hit_sound_settings,
+                });
+            }
+            PlayerCommand::Exit => {}
         }
     }
 }
