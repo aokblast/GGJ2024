@@ -30,12 +30,14 @@ pub struct SoundPlayer {
     interval: u128,
     start_time: u128,
     action_start_time: u128,
+    action_last_time: u128,
     pub past_key: Vec<i32>,
     pub has_started: bool,
     last_step: u128,
     pub sound_id: Entity,
     pub goal_text_id: Entity,
     pub past_text_id: Entity,
+    pressed: bool,
 }
 
 impl Action {
@@ -67,12 +69,14 @@ impl SoundPlayer {
             interval,
             start_time: 0,
             action_start_time: 0,
+            action_last_time: 0,
             past_key: vec![],
             has_started: false,
             last_step: 0,
             sound_id,
             goal_text_id,
             past_text_id,
+            pressed: false,
         }
     }
 
@@ -92,7 +96,7 @@ impl SoundPlayer {
         self.action.keys.clear();
         let len = rand::thread_rng().gen_range(1..6);
         for _ in 0..len {
-            self.action.keys.push(rand::thread_rng().gen_range(1..4));
+            self.action.keys.push(rand::thread_rng().gen_range(1..3));
         }
     }
 
@@ -120,7 +124,7 @@ impl SoundPlayer {
         ));
     }
 
-    pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>) {
+    pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>, is_ringcon: bool) {
         if !self.has_started {
             return;
         }
@@ -129,55 +133,42 @@ impl SoundPlayer {
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
 
-        let mut remain = (since_the_epoch.as_millis() - self.start_time) % self.interval;
+        let mut interval = self.interval / 4;
 
-        if remain > self.interval / 2 {
-            remain = self.interval - remain;
+        if is_ringcon {
+            interval *= 2;
         }
 
-        if remain > self.interval / 4 {
+        if ((self.action_start_time).abs_diff(since_the_epoch.as_millis()) < interval) {
             println!("wrong");
             self.fail(evt_w);
             self.past_key.clear();
             return;
         }
 
-        if self.past_key.len() == 0 {
-            self.action_start_time = since_the_epoch.as_millis()
-        }
-
-        let passing_keys = (since_the_epoch.as_millis() - self.action_start_time
-            + self.interval / 2)
-            / self.interval;
-
-        let missing_key = 1 + passing_keys as usize - self.past_key.len();
-
-        if missing_key < 1 {
-            println!("too fast");
+        if self.pressed {
+            println!("Double Press");
             self.fail(evt_w);
             self.past_key.clear();
             return;
         }
 
-        if missing_key > 1 {
-            println!("too slow");
-            self.fail(evt_w);
-            self.past_key.clear();
-            return;
-        }
+        self.pressed = true;
 
         println!("{}", key);
 
         self.past_key.push(key);
 
+        if (self.action.keys[self.past_key.len() - 1]) != *self.past_key.last().unwrap() {
+            println!("wrong combo");
+            self.fail(evt_w);
+            self.past_key.clear();
+        }
+
         if vec_compare(&self.action.keys, &self.past_key) {
             self.past_key.clear();
             Self::do_action(&self.action.action_type, evt_w);
             self.reroll();
-        } else if self.past_key.len() >= self.action.keys.len() {
-            println!("wrong combo");
-            self.fail(evt_w);
-            self.past_key.clear();
         }
     }
 
@@ -185,18 +176,21 @@ impl SoundPlayer {
         self.has_started = false;
     }
 
-    pub fn update(&mut self) -> bool {
+    pub fn update(&mut self, time: u128) -> bool {
         if !self.has_started {
             return false;
         }
+        self.action_last_time = self.action_start_time;
+        self.action_start_time = time;
         let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
-        if (since_the_epoch.as_millis() - self.start_time) / self.interval <= self.last_step {
+
+        if (time - self.start_time) / self.interval <= self.last_step {
             return false;
         }
-        self.last_step = (since_the_epoch.as_millis() - self.start_time) / self.interval;
+
+        self.last_step = (time - self.start_time) / self.interval;
+
+        self.pressed = false;
 
         return true;
     }

@@ -3,6 +3,11 @@ mod plugins;
 mod ringcon;
 mod sound_player;
 
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::ringcon::RingConEvent;
+use bevy::app::AppExit;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::query;
 use bevy::math::bool;
@@ -17,10 +22,8 @@ use dlopen2::wrapper::Container;
 use plugins::art::{self, artPlugin, create_people_system};
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
-use ringcon::{test_ringcon, PullVal, RingConApi};
+use ringcon::RingConPlugin;
 use sound_player::*;
-use std::thread;
-use std::time::Duration;
 
 #[derive(Resource)]
 pub struct WSound(pub Handle<AudioSource>);
@@ -48,7 +51,7 @@ fn main() {
         .add_plugins(TweeningPlugin)
         // our plugins
         .add_plugins((JumpImagePlugin, GameLevelUiPlugin, SoundSystemPlugin))
-        .add_plugins((artPlugin))
+        .add_plugins(artPlugin)
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -350,13 +353,45 @@ fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
 fn phah(
     mut commands: Commands,
     mut events: EventReader<KeyboardInput>,
+    mut ringcon_evt: EventReader<RingConEvent>,
     mut query: Query<&mut SoundPlayer>,
     a: Res<ASound>,
     w: Res<WSound>,
     d: Res<DSound>,
     mut evt_w: EventWriter<AttackEvent>,
     mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
+    mut evt_exit: EventWriter<AppExit>,
 ) {
+    for event in ringcon_evt.read() {
+        for mut sound_player in &mut query {
+            match sound_player.action.action_type {
+                ActionType::Player1 => match event {
+                    RingConEvent::PUSH => {
+                        commands.spawn(AudioBundle {
+                            source: a.0.clone(),
+                            settings: PlaybackSettings::DESPAWN,
+                        });
+                        sound_player.key_down(1, &mut evt_w, true);
+                    }
+                    RingConEvent::POLL => {
+                        commands.spawn(AudioBundle {
+                            source: w.0.clone(),
+                            settings: PlaybackSettings::DESPAWN,
+                        });
+                        sound_player.key_down(2, &mut evt_w, true);
+                    }
+                    RingConEvent::SD => {
+                        commands.spawn(AudioBundle {
+                            source: d.0.clone(),
+                            settings: PlaybackSettings::DESPAWN,
+                        });
+                        sound_player.key_down(3, &mut evt_w, true);
+                    }
+                },
+                _ => {}
+            }
+        }
+    }
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             if event.key_code == Some(KeyCode::Space) {
@@ -366,47 +401,63 @@ fn phah(
                     to: Vec2::new(-240., 0.),
                 });
             }
+
+            if event.key_code == Some(KeyCode::Escape) {
+                evt_exit.send(AppExit);
+            }
+
             for mut sound_player in &mut query {
-                let is_player_1 = sound_player.action.action_type == ActionType::Player1;
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::A)
-                    } else {
-                        Some(KeyCode::G)
-                    }
-                {
-                    commands.spawn(AudioBundle {
-                        source: a.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(1, &mut evt_w);
+                match sound_player.action.action_type {
+                    ActionType::Player1 => match event.key_code {
+                        Some(KeyCode::A) => {
+                            commands.spawn(AudioBundle {
+                                source: a.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(1, &mut evt_w, false);
+                        }
+                        Some(KeyCode::W) => {
+                            commands.spawn(AudioBundle {
+                                source: w.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(2, &mut evt_w, false);
+                        }
+                        Some(KeyCode::D) => {
+                            commands.spawn(AudioBundle {
+                                source: d.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(3, &mut evt_w, false);
+                        }
+                        _ => {}
+                    },
+                    ActionType::Player2 => match event.key_code {
+                        Some(KeyCode::G) => {
+                            commands.spawn(AudioBundle {
+                                source: a.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(1, &mut evt_w, false);
+                        }
+                        Some(KeyCode::Y) => {
+                            commands.spawn(AudioBundle {
+                                source: w.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(2, &mut evt_w, false);
+                        }
+                        Some(KeyCode::J) => {
+                            commands.spawn(AudioBundle {
+                                source: d.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(3, &mut evt_w, false);
+                        }
+                        _ => {}
+                    },
                 }
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::W)
-                    } else {
-                        Some(KeyCode::Y)
-                    }
-                {
-                    commands.spawn(AudioBundle {
-                        source: w.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(2, &mut evt_w);
-                }
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::D)
-                    } else {
-                        Some(KeyCode::J)
-                    }
-                {
-                    commands.spawn(AudioBundle {
-                        source: d.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(3, &mut evt_w);
-                }
+
                 if event.key_code == Some(KeyCode::O) {
                     println!("start");
                     sound_player.start(&mut sound_start_evt_w);
@@ -423,7 +474,13 @@ fn sound_timer(
     sound_query: Query<&Sound>,
 ) {
     for mut sound_player in &mut query {
-        if sound_player.update() {
+        if sound_player.update(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis()
+                + 1000,
+        ) {
             if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
                 commands.spawn(AudioBundle {
                     source: sound.0.clone(),
