@@ -2,7 +2,7 @@ use crate::config::ImageKey;
 use crate::{AppState, AttackEvent};
 use bevy::prelude::*;
 use bevy_tweening::lens::TransformPositionLens;
-use bevy_tweening::{Animator, EaseFunction, Tween};
+use bevy_tweening::{Animator, EaseFunction, EaseMethod, Tween};
 use rand::Rng;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::vec;
@@ -219,9 +219,9 @@ pub struct MoveBeat {
     pub duration: Duration,
 }
 
-const BEAT_START: Vec2 = Vec2::new(0., 400.);
-const BEAT_END_P1: Vec2 = Vec2::new(-500., 400.);
-const BEAT_END_P2: Vec2 = Vec2::new(500., 400.);
+const BEAT_START: Vec2 = Vec2::new(0., -400.);
+const BEAT_END_P1: Vec2 = Vec2::new(-500., -400.);
+const BEAT_END_P2: Vec2 = Vec2::new(500., -400.);
 
 fn produce_beat_system(
     mut query: Query<(&SoundPlayer, &mut BeatTimer)>,
@@ -265,11 +265,11 @@ fn move_beat_system(
 ) {
     for (ent, mb) in &query {
         let MoveBeat { from, to, duration } = *mb;
-        let z = -20.;
+        let z = 30.;
         let from = Vec3::new(from.x, from.y, z);
         let to = Vec3::new(to.x, to.y, z);
         let tween = Tween::new(
-            EaseFunction::BackInOut,
+            EaseMethod::Linear,
             duration,
             TransformPositionLens {
                 start: from,
@@ -280,16 +280,12 @@ fn move_beat_system(
         let img = asset_server.load(format!("images/{}", ImageKey::GenShinStart));
         commands.spawn((
             SpriteBundle {
+                texture: img,
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(50., 50.)),
-                    ..Default::default()
+                    ..default()
                 },
-                texture: img,
-                transform: Transform {
-                    translation: from,
-                    ..Default::default()
-                },
-                ..Default::default()
+                ..default()
             },
             Animator::new(tween),
         ));

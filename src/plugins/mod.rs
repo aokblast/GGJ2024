@@ -30,8 +30,8 @@ fn spawn_jump_image(
     asset_server: Res<AssetServer>,
 ) {
     for (ent, img) in &query {
-        let from = Vec3::new(img.from.x, img.from.y, 0.);
-        let to = Vec3::new(img.to.x, img.to.y, 0.);
+        let from = Vec3::new(img.from.x, img.from.y, 1.);
+        let to = Vec3::new(img.to.x, img.to.y, 1.);
         let img: Handle<Image> = asset_server.load::<Image>(format!("images/{}", img.key));
 
         let duration = Duration::from_secs_f32(0.8);
