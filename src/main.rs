@@ -32,8 +32,6 @@ pub struct ASound(pub Handle<AudioSource>);
 pub struct DSound(pub Handle<AudioSource>);
 
 fn main() {
-    test_ringcon();
-
     App::new()
         .add_event::<AttackEvent>()
         .add_plugins(DefaultPlugins)
