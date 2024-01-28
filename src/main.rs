@@ -1,6 +1,10 @@
 mod config;
 mod plugins;
+mod ringcon;
 mod sound_player;
+
+use std::thread;
+use std::time::Duration;
 
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::query;
@@ -12,7 +16,10 @@ use bevy::{
 };
 use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
+use dlopen2::wrapper::Container;
+use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
+use ringcon::{test_ringcon, PullVal, RingConApi};
 use sound_player::*;
 
 #[derive(Resource)]
@@ -32,7 +39,7 @@ fn main() {
         // third-party plugins
         .add_plugins(TweeningPlugin)
         // our plugins
-        .add_plugins(JumpImagePlugin)
+        .add_plugins((JumpImagePlugin, GameLevelUiPlugin))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -460,16 +467,6 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
         texture: background,
         ..Default::default()
     });
-
-    commands.spawn((
-        Camera2dBundle {
-            camera_2d: Camera2d {
-                clear_color: ClearColorConfig::Custom(Color::rgb(0.5, 0.2, 0.2)),
-            },
-            ..default()
-        },
-        MyCameraMarker,
-    ));
     // commands.spawn((
     //     TextBundle::from_section(
     //         "PaTaPon!",
