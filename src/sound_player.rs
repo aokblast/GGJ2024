@@ -7,6 +7,26 @@ use rand::Rng;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::vec;
 
+#[derive(Debug)]
+pub struct SoundSystemPlugin;
+
+impl Plugin for SoundSystemPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<SoundPlayerStart>()
+            .add_systems(Startup, setup_sound_system)
+            .add_systems(
+                Update,
+                (
+                    produce_beat_system,
+                    move_beat_system,
+                    produce_beat_on_player_start,
+                    sound_timer,
+                )
+                    .run_if(in_state(AppState::InGame)),
+            );
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum ActionType {
     Player1,
@@ -304,22 +324,46 @@ fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
 }
 
-#[derive(Debug)]
-pub struct SoundSystemPlugin;
+fn sound_timer(
+    mut commands: Commands,
+    mut query: Query<&mut SoundPlayer>,
+    mut text_query: Query<&mut Text>,
+    sound_query: Query<&Sound>,
+) {
+    for mut sound_player in &mut query {
+        if sound_player.update(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis()
+                + 1000,
+        ) {
+            if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
+                commands.spawn(AudioBundle {
+                    source: sound.0.clone(),
+                    // auto-despawn the entity when playback finishes
+                    settings: PlaybackSettings::DESPAWN,
+                });
+            }
+        }
+        let mut s = "".to_owned();
+        for k in &sound_player.past_key {
+            s += k.to_string().as_str();
+        }
+        for _ in sound_player.past_key.len()..sound_player.action.keys.len() {
+            s += " ";
+        }
+        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.past_text_id) {
+            text.sections[0].value = s;
+        }
 
-impl Plugin for SoundSystemPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_event::<SoundPlayerStart>()
-            .add_systems(Startup, setup_sound_system)
-            .add_systems(
-                Update,
-                (
-                    produce_beat_system,
-                    move_beat_system,
-                    produce_beat_on_player_start,
-                )
-                    .run_if(in_state(AppState::InGame)),
-            );
+        s = "".to_owned();
+        for k in &sound_player.action.keys {
+            s += k.to_string().as_str();
+        }
+        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.goal_text_id) {
+            text.sections[0].value = s;
+        }
     }
 }
 

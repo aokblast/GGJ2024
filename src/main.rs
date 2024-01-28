@@ -66,7 +66,6 @@ fn main() {
                 .chain()
                 .run_if(in_state(AppState::InGame)),
         )
-        .add_systems(Update, sound_timer)
         .insert_resource(CounterNumber {
             score1: 0,
             score2: 0,
@@ -242,49 +241,6 @@ fn phah(
                     sound_player.start(&mut sound_start_evt_w);
                 }
             }
-        }
-    }
-}
-
-fn sound_timer(
-    mut commands: Commands,
-    mut query: Query<&mut SoundPlayer>,
-    mut text_query: Query<&mut Text>,
-    sound_query: Query<&Sound>,
-) {
-    for mut sound_player in &mut query {
-        if sound_player.update(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_millis()
-                + 1000,
-        ) {
-            if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
-                commands.spawn(AudioBundle {
-                    source: sound.0.clone(),
-                    // auto-despawn the entity when playback finishes
-                    settings: PlaybackSettings::DESPAWN,
-                });
-            }
-        }
-        let mut s = "".to_owned();
-        for k in &sound_player.past_key {
-            s += k.to_string().as_str();
-        }
-        for _ in sound_player.past_key.len()..sound_player.action.keys.len() {
-            s += " ";
-        }
-        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.past_text_id) {
-            text.sections[0].value = s;
-        }
-
-        s = "".to_owned();
-        for k in &sound_player.action.keys {
-            s += k.to_string().as_str();
-        }
-        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.goal_text_id) {
-            text.sections[0].value = s;
         }
     }
 }
