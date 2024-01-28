@@ -101,6 +101,9 @@ jobs:
         run: |
           mkdir target/dist/assets && cp -r assets target/dist/assets
           mkdir target/dist/credits && cp -r credits target/dist/credits
+          cp hidapi.dll target/dist
+          cp ringcon_driver.dll target/dist
+          cp config.txt target/dist
       - name: Zip release
         uses: vimtor/action-zip@v1.1
         with:

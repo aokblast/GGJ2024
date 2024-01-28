@@ -67,6 +67,8 @@ fn main() {
             GameLevelUiPlugin,
             SoundSystemPlugin,
             CharacterSelectionPlugin,
+            #[cfg(target_os = "windos")]
+            RingConPlugin,
         ))
         .add_plugins(artPlugin)
         .add_systems(Startup, setup)
