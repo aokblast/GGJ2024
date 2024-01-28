@@ -2,7 +2,7 @@ use crate::config::ImageKey;
 use crate::{AppState, AttackEvent};
 use bevy::prelude::*;
 use bevy_tweening::lens::TransformPositionLens;
-use bevy_tweening::{Animator, EaseFunction, EaseMethod, Tween};
+use bevy_tweening::{Animator, EaseMethod, Tween};
 use rand::Rng;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::vec;
@@ -44,7 +44,7 @@ impl Action {
     pub fn new(action_type: ActionType) -> Self {
         Self {
             keys: vec![],
-            action_type: action_type,
+            action_type,
         }
     }
 }
@@ -139,7 +139,7 @@ impl SoundPlayer {
             interval *= 2;
         }
 
-        if ((self.action_start_time).abs_diff(since_the_epoch.as_millis()) < interval) {
+        if self.action_start_time.abs_diff(since_the_epoch.as_millis()) < interval {
             println!("wrong");
             self.fail(evt_w);
             self.past_key.clear();

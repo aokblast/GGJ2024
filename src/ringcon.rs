@@ -1,11 +1,9 @@
 use crate::ringcon::RingConEvent::SD;
 use crate::ringcon::SquattingStates::{DOING, DONE, NO};
-use crate::AppState::InGame;
 use bevy::app::{App, Plugin, Startup};
-use bevy::prelude::{Entity, Event, EventWriter, OnEnter, Res, ResMut, Resource, Update};
+use bevy::prelude::{Event, EventWriter, Res, ResMut, Resource, Update};
 use bevy::time::{Time, Timer, TimerMode};
 use dlopen2::wrapper::{Container, WrapperApi};
-use std::thread;
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -26,7 +24,7 @@ enum SquattingStates {
 
 impl Default for SquattingStates {
     fn default() -> Self {
-        Self::NO
+        NO
     }
 }
 
@@ -95,7 +93,7 @@ fn pull_ringcon_system(
     if api.timer.finished() {
         unsafe {
             api.container
-                .poll_ringcon(unsafe { &mut res } as *mut PullVal);
+                .poll_ringcon( &mut res as *mut PullVal);
         }
 
         println!("{}", res.push_val);
@@ -145,15 +143,15 @@ fn pull_ringcon_system(
             }
         }
 
-        if stat == SquattingStates::NO {
+        if stat == NO {
             if res.squatting {
-                stat = SquattingStates::DOING;
+                stat = DOING;
                 api.squat_rs.sq = 0;
                 api.squat_rs.nsq = 0;
             }
-        } else if stat == SquattingStates::DONE {
+        } else if stat == DONE {
             event.send(SD);
-            stat = SquattingStates::NO;
+            stat = NO;
             api.squat_rs.sq = 0;
             api.squat_rs.nsq = 0;
         }

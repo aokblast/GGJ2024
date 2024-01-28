@@ -1,5 +1,4 @@
 use crate::AppState::CharacterSelection;
-use crate::{AppState, StartMenuTag};
 use bevy::prelude::*;
 
 #[derive(Debug)]
@@ -11,7 +10,7 @@ struct CharacterSelectionMenuTag;
 impl Plugin for CharacterSelectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            OnEnter(AppState::CharacterSelection),
+            OnEnter(CharacterSelection),
             (setup_character_menu, hover_feedback_system),
         )
         .add_systems(OnExit(CharacterSelection), cleanup_menu);
@@ -40,42 +39,33 @@ fn setup_character_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
     let img_path = "images/ui/scenes/選角畫面_冥進_token.png";
     let left_party_img = asset_server.load(img_path);
     let left_pos = Vec3::new(-500., -75., 0.);
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: NORMAL_COLOR,
+
+    let mut spawn_generator = |pos, img| {
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: NORMAL_COLOR,
+                    ..default()
+                },
+                transform: Transform {
+                    translation: pos,
+                    scale: Vec3::new(1.05, 1.05, 1.05),
+                    ..default()
+                },
+                texture: img,
                 ..default()
             },
-            transform: Transform {
-                translation: left_pos,
-                scale: Vec3::new(1.05, 1.05, 1.05),
-                ..default()
-            },
-            texture: left_party_img,
-            ..default()
-        },
-        CharacterSelectionMenuTag,
-    ));
+            CharacterSelectionMenuTag,
+        ));
+    };
+
+    spawn_generator(left_pos, left_party_img);
 
     let img_path = "images/ui/scenes/選角畫面_大甲_token.png";
-    let left_right_img = asset_server.load(img_path);
+    let right_party_img = asset_server.load(img_path);
     let right_pos = Vec3::new(500., -75., 0.);
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: NORMAL_COLOR,
-                ..default()
-            },
-            transform: Transform {
-                translation: right_pos,
-                scale: Vec3::new(1.05, 1.05, 1.05),
-                ..default()
-            },
-            texture: left_right_img,
-            ..default()
-        },
-        CharacterSelectionMenuTag,
-    ));
+
+    spawn_generator(right_pos, right_party_img);
 }
 
 fn hover_feedback_system(mut query: Query<(&Interaction, &mut Sprite), Changed<Interaction>>) {

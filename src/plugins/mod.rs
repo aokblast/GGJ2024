@@ -5,9 +5,9 @@ pub mod game_level;
 use std::time::Duration;
 
 use crate::config::ImageKey;
-use bevy::{prelude::*, sprite::Anchor, transform::commands};
+use bevy::{prelude::*, sprite::Anchor};
 use bevy_tweening::{
-    lens::{ColorMaterialColorLens, SpriteColorLens, TransformPositionLens},
+    lens::{SpriteColorLens, TransformPositionLens},
     Animator, EaseFunction, Tween, TweenCompleted,
 };
 

@@ -1,8 +1,8 @@
-use crate::{config::ImageKey, GenEvent};
-use bevy::{math::vec2, prelude::*, sprite::Anchor, transform::commands};
+use crate::GenEvent;
+use bevy::{prelude::*, sprite::Anchor};
 use bevy_tweening::{
-    lens::{ColorMaterialColorLens, SpriteColorLens, TransformPositionLens},
-    Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween, TweenCompleted,
+    lens::TransformPositionLens,
+    Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
 };
 use rand::prelude::*;
 use std::time::Duration;
@@ -17,7 +17,7 @@ pub struct JumpPeopleImage {
 /// play one-shot SFV
 // pub struct PlaySfxEvent;
 
-pub struct artPlugin;
+pub struct ArtPlugin;
 
 #[derive(Debug, Event)]
 pub struct PeopleEntity(Entity);
@@ -45,15 +45,6 @@ pub fn create_people_system(
         .with_repeat_strategy(RepeatStrategy::MirroredRepeat)
         .with_repeat_count(RepeatCount::Infinite);
 
-        let color_tween = Tween::new(
-            EaseFunction::CircularInOut,
-            duration,
-            SpriteColorLens {
-                start: Color::default(),
-                end: Color::rgba(1., 1., 1., 0.5),
-            },
-        )
-        .with_completed_event(0);
         commands.spawn((
             // Spawn a Sprite entity to animate the position of.
             SpriteBundle {
@@ -88,19 +79,19 @@ pub fn gen_people(mut commands: Commands, mut evt_r: EventReader<GenEvent>) {
             //player 1
             if e.1 == 1 {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/people_1.png").to_string(),
+                    img_name: "images/people_1.png".to_string(),
                     from: Vec2 { x: -r, y: floor },
                     to: Vec2 { x: -r, y: roof },
                 });
             } else if e.1 == 2 {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/cat_1.png").to_string(),
+                    img_name: "images/cat_1.png".to_string(),
                     from: Vec2 { x: -r, y: floor },
                     to: Vec2 { x: -r, y: roof },
                 });
             } else {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/sedan_chair_1.png").to_string(),
+                    img_name: "images/sedan_chair_1.png".to_string(),
                     from: Vec2 { x: -che, y: floor },
                     to: Vec2 { x: -che, y: roof },
                 });
@@ -109,19 +100,19 @@ pub fn gen_people(mut commands: Commands, mut evt_r: EventReader<GenEvent>) {
             //player2
             if e.1 == 1 {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/people_2.png").to_string(),
+                    img_name: "images/people_2.png".to_string(),
                     from: Vec2 { x: r, y: floor },
                     to: Vec2 { x: r, y: roof },
                 });
             } else if e.1 == 2 {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/cat_2.png").to_string(),
+                    img_name: "images/cat_2.png".to_string(),
                     from: Vec2 { x: r, y: floor },
                     to: Vec2 { x: r, y: roof },
                 });
             } else {
                 commands.spawn(JumpPeopleImage {
-                    img_name: ("images/sedan_chair_2.png").to_string(),
+                    img_name: "images/sedan_chair_2.png".to_string(),
                     from: Vec2 { x: che, y: floor },
                     to: Vec2 { x: che, y: roof },
                 });
@@ -142,7 +133,7 @@ pub fn gen_people(mut commands: Commands, mut evt_r: EventReader<GenEvent>) {
 //     }
 // }
 
-impl Plugin for artPlugin {
+impl Plugin for ArtPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (create_people_system, gen_people));
     }

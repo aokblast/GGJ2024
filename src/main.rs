@@ -3,29 +3,23 @@ mod plugins;
 mod ringcon;
 mod sound_player;
 
-use std::thread;
 use std::time::Duration;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ringcon::RingConEvent;
 use bevy::app::AppExit;
-use bevy::core_pipeline::clear_color::ClearColorConfig;
-use bevy::ecs::query;
 use bevy::math::bool;
 use bevy::prelude::*;
 use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
-    prelude::*,
 };
 use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
-use dlopen2::wrapper::Container;
-use plugins::art::{self, artPlugin, create_people_system};
+use plugins::art::ArtPlugin;
 use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
-use ringcon::RingConPlugin;
 use sound_player::*;
 
 #[derive(Resource)]
@@ -70,7 +64,7 @@ fn main() {
             #[cfg(target_os = "windos")]
             RingConPlugin,
         ))
-        .add_plugins(artPlugin)
+        .add_plugins(ArtPlugin)
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -99,12 +93,12 @@ fn main() {
         //.add_systems(Startup, setup_camera)
         .add_systems(
             Update,
-            ((
+            (
                 counter1_update_system,
                 counter2_update_system,
                 combo1_update_system,
                 combo2_update_system,
-            ))
+            )
                 .chain()
                 .run_if(in_state(AppState::InGame)),
         )
@@ -310,7 +304,7 @@ fn menu(
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut color) in &mut interaction_query {
+    for (interaction, _color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
                 // next_state.set(AppState::CharacterSelection);
@@ -709,7 +703,7 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
 pub fn score_system(
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
-    mut setting: Res<ScoreSetting>,
+    setting: Res<ScoreSetting>,
     mut evt_r: EventReader<AttackEvent>,
     mut evt_w: EventWriter<GenEvent>,
 ) {
@@ -724,13 +718,13 @@ pub fn score_system(
                 gen_num = ((counter.score1 + increase_num) / 5) - (counter.score1 / 5);
                 gen_num2 = ((counter.score1 + increase_num) / 10) - (counter.score1 / 10);
                 if gen_num >= 1 {
-                    for m in 0..gen_num {
+                    for _ in 0..gen_num {
                         evt_w.send(GenEvent(1, 1));
                         println!("evt_w.send gen={}", gen_num);
                     }
                 }
                 if gen_num >= 2 {
-                    for m in 0..gen_num {
+                    for _ in 0..gen_num {
                         evt_w.send(GenEvent(1, 2));
                         println!("evt_w.send gen={}", gen_num);
                     }
@@ -740,27 +734,27 @@ pub fn score_system(
             } else {
                 combo.score1 = 0;
                 gen_num = 0;
+
+                // TODO: check if miss
+            }
+        } else if e.1 {
+            increase_num = combo.score2 + setting.basic_score;
+            gen_num = ((counter.score2 + increase_num) / 5) - (counter.score2 / 5);
+            gen_num2 = ((counter.score2 + increase_num) / 10) - (counter.score2 / 10);
+            if gen_num >= 1 {
+                for _ in 0..gen_num {
+                    evt_w.send(GenEvent(2, 1));
+                    println!("evt_w.send gen={}", gen_num);
+                }
+            }
+            if gen_num2 >= 2 {
+                for _ in 0..gen_num {
+                    evt_w.send(GenEvent(2, 2));
+                    println!("evt_w.send gen={}", gen_num);
+                }
             }
         } else {
-            if e.1 {
-                increase_num = combo.score2 + setting.basic_score;
-                gen_num = ((counter.score2 + increase_num) / 5) - (counter.score2 / 5);
-                gen_num2 = ((counter.score2 + increase_num) / 10) - (counter.score2 / 10);
-                if gen_num >= 1 {
-                    for m in 0..gen_num {
-                        evt_w.send(GenEvent(2, 1));
-                        println!("evt_w.send gen={}", gen_num);
-                    }
-                }
-                if gen_num2 >= 2 {
-                    for m in 0..gen_num {
-                        evt_w.send(GenEvent(2, 2));
-                        println!("evt_w.send gen={}", gen_num);
-                    }
-                }
-            } else {
-                combo.score2 = 0;
-            }
+            combo.score2 = 0;
         }
     }
 }
