@@ -1,3 +1,5 @@
+pub mod game_level;
+
 use std::time::Duration;
 
 use crate::config::ImageKey;
