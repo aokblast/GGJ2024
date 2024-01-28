@@ -3,9 +3,6 @@ mod plugins;
 mod ringcon;
 mod sound_player;
 
-use std::thread;
-use std::time::Duration;
-
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::query;
 use bevy::math::bool;
@@ -17,10 +14,13 @@ use bevy::{
 use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
 use dlopen2::wrapper::Container;
+use plugins::art::{self, artPlugin, create_people_system};
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
 use ringcon::{test_ringcon, PullVal, RingConApi};
 use sound_player::*;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Resource)]
 pub struct WSound(pub Handle<AudioSource>);
@@ -34,6 +34,7 @@ pub struct DSound(pub Handle<AudioSource>);
 fn main() {
     App::new()
         .add_event::<AttackEvent>()
+        .add_event::<GenEvent>()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 resolution: (1920., 1080.).into(),
@@ -47,6 +48,7 @@ fn main() {
         .add_plugins(TweeningPlugin)
         // our plugins
         .add_plugins((JumpImagePlugin, GameLevelUiPlugin, SoundSystemPlugin))
+        .add_plugins((artPlugin))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -67,6 +69,10 @@ fn main() {
         .insert_resource(ComboNumber {
             score1: 0,
             score2: 0,
+        })
+        .insert_resource(ScoreSetting {
+            basic_score: 3,
+            combo_score: 1,
         })
         //.add_systems(Startup, setup_camera)
         .add_systems(
@@ -465,6 +471,9 @@ struct CounterText2;
 #[derive(Debug, Event)]
 struct AttackEvent(i32, bool);
 
+#[derive(Debug, Event)]
+struct GenEvent(i32, i32); //player/img
+
 #[derive(Component)]
 struct PastKeys;
 
@@ -473,6 +482,12 @@ struct ComboText1;
 
 #[derive(Component)]
 struct ComboText2;
+
+#[derive(Resource)]
+pub struct ScoreSetting {
+    pub basic_score: usize,
+    pub combo_score: usize,
+}
 
 #[derive(Resource)]
 pub struct CounterNumber {
@@ -489,7 +504,11 @@ pub struct ComboNumber {
 #[derive(Resource)]
 struct GreetTimer(Timer);
 
-fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_camera(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut evt_w: EventWriter<GenEvent>,
+) {
     let background = asset_server.load("images/background.png");
     commands.spawn(SpriteBundle {
         texture: background,
@@ -499,22 +518,6 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         ..Default::default()
     });
-    // commands.spawn((
-    //     TextBundle::from_section(
-    //         "PaTaPon!",
-    //         TextStyle {
-    //             font_size: 100.0,
-    //             ..default()
-    //         },
-    //     )
-    //     .with_style(Style {
-    //         position_type: PositionType::Absolute,
-    //         bottom: Val::Px(5.0),
-    //         top: Val::Px(5.0),
-    //         ..default()
-    //     }),
-    //     Colortext,
-    // ));
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
@@ -632,6 +635,8 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
         ComboText2,
     ));
+    evt_w.send(GenEvent(1, 3));
+    evt_w.send(GenEvent(2, 3));
 }
 
 fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext>>) {
@@ -651,20 +656,55 @@ fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext
 pub fn score_system(
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
-    mut evt: EventReader<AttackEvent>,
+    mut setting: Res<ScoreSetting>,
+    mut evt_r: EventReader<AttackEvent>,
+    mut evt_w: EventWriter<GenEvent>,
 ) {
-    for e in evt.read() {
+    let mut increase_num;
+    let mut gen_num;
+    let mut gen_num2;
+    for e in evt_r.read() {
         if e.0 == 1 {
             if e.1 {
-                counter.score1 += combo.score1 + 3;
-                combo.score1 += 1;
+                increase_num = combo.score1 + setting.basic_score;
+
+                gen_num = ((counter.score1 + increase_num) / 5) - (counter.score1 / 5);
+                gen_num2 = ((counter.score1 + increase_num) / 10) - (counter.score1 / 10);
+                if gen_num >= 1 {
+                    for m in 0..gen_num {
+                        evt_w.send(GenEvent(1, 1));
+                        println!("evt_w.send gen={}", gen_num);
+                    }
+                }
+                if gen_num >= 2 {
+                    for m in 0..gen_num {
+                        evt_w.send(GenEvent(1, 2));
+                        println!("evt_w.send gen={}", gen_num);
+                    }
+                }
+                counter.score1 += combo.score1 + setting.basic_score;
+                combo.score1 += setting.combo_score;
             } else {
                 combo.score1 = 0;
+                gen_num = 0;
             }
         } else {
             if e.1 {
-                counter.score2 += combo.score2 + 3;
-                combo.score2 += 1;
+                increase_num = combo.score2 + setting.basic_score;
+                gen_num = ((counter.score2 + increase_num) / 5) - (counter.score2 / 5);
+                gen_num2 = ((counter.score2 + increase_num) / 10) - (counter.score2 / 10);
+                if gen_num >= 1 {
+                    for m in 0..gen_num {
+                        evt_w.send(GenEvent(2, 1));
+                        println!("evt_w.send gen={}", gen_num);
+                    }
+                }
+                if gen_num2 >= 2 {
+                    for m in 0..gen_num {
+                        evt_w.send(GenEvent(2, 2));
+                        println!("evt_w.send gen={}", gen_num);
+                    }
+                }
             } else {
                 combo.score2 = 0;
             }

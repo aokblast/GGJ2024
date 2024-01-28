@@ -1,3 +1,4 @@
+pub(crate) mod art;
 pub mod game_level;
 
 use std::time::Duration;
