@@ -349,6 +349,7 @@ fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
 fn phah(
     mut commands: Commands,
     mut events: EventReader<KeyboardInput>,
+    mut ringcon_evt: EventReader<RingConApi>,
     mut query: Query<&mut SoundPlayer>,
     a: Res<ASound>,
     w: Res<WSound>,
@@ -356,6 +357,39 @@ fn phah(
     mut evt_w: EventWriter<AttackEvent>,
     mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
 ) {
+    for event in ringcon_evt.read() {
+        for mut sound_player in &mut query {
+            match sound_player.action.action_type {
+                ActionType::Player1 => {
+                    match event.key_code {
+                        Some(KeyCode::A) => {
+                            commands.spawn(AudioBundle {
+                                source: a.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(1, &mut evt_w);
+                        }
+                        Some(KeyCode::W) => {
+                            commands.spawn(AudioBundle {
+                                source: w.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(2, &mut evt_w);
+                        }
+                        Some(KeyCode::D) => {
+                            commands.spawn(AudioBundle {
+                                source: d.0.clone(),
+                                settings: PlaybackSettings::DESPAWN,
+                            });
+                            sound_player.key_down(3, &mut evt_w);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
     for event in events.read() {
         if event.state == ButtonState::Pressed {
             if event.key_code == Some(KeyCode::Space) {
@@ -366,46 +400,61 @@ fn phah(
                 });
             }
             for mut sound_player in &mut query {
-                let is_player_1 = sound_player.action.action_type == ActionType::Player1;
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::A)
-                    } else {
-                        Some(KeyCode::G)
+                match sound_player.action.action_type {
+                    ActionType::Player1 => {
+                        match event.key_code {
+                            Some(KeyCode::A) => {
+                                commands.spawn(AudioBundle {
+                                    source: a.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(1, &mut evt_w);
+                            }
+                            Some(KeyCode::W) => {
+                                commands.spawn(AudioBundle {
+                                    source: w.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(2, &mut evt_w);
+                            }
+                            Some(KeyCode::D) => {
+                                commands.spawn(AudioBundle {
+                                    source: d.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(3, &mut evt_w);
+                            }
+                            _ => {}
+                        }
                     }
-                {
-                    commands.spawn(AudioBundle {
-                        source: a.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(1, &mut evt_w);
-                }
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::W)
-                    } else {
-                        Some(KeyCode::Y)
+                    ActionType::Player2 => {
+                        match event.key_code {
+                            Some(KeyCode::G) => {
+                                commands.spawn(AudioBundle {
+                                    source: a.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(1, &mut evt_w);
+                            }
+                            Some(KeyCode::Y) => {
+                                commands.spawn(AudioBundle {
+                                    source: w.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(2, &mut evt_w);
+                            }
+                            Some(KeyCode::J) => {
+                                commands.spawn(AudioBundle {
+                                    source: d.0.clone(),
+                                    settings: PlaybackSettings::DESPAWN,
+                                });
+                                sound_player.key_down(3, &mut evt_w);
+                            }
+                            _ => {}
+                        }
                     }
-                {
-                    commands.spawn(AudioBundle {
-                        source: w.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(2, &mut evt_w);
                 }
-                if event.key_code
-                    == if is_player_1 {
-                        Some(KeyCode::D)
-                    } else {
-                        Some(KeyCode::J)
-                    }
-                {
-                    commands.spawn(AudioBundle {
-                        source: d.0.clone(),
-                        settings: PlaybackSettings::DESPAWN,
-                    });
-                    sound_player.key_down(3, &mut evt_w);
-                }
+
                 if event.key_code == Some(KeyCode::O) {
                     println!("start");
                     sound_player.start(&mut sound_start_evt_w);
