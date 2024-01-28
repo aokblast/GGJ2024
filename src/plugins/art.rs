@@ -1,8 +1,7 @@
 use crate::GenEvent;
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_tweening::{
-    lens::TransformPositionLens,
-    Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
+    lens::TransformPositionLens, Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
 };
 use rand::prelude::*;
 use std::time::Duration;
