@@ -289,12 +289,6 @@ fn sound_timer(
     }
 }
 
-#[derive(Component)]
-struct MyCameraMarker;
-
-#[derive(Component)]
-struct Colortext;
-
 const COUNTER_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 
@@ -327,9 +321,6 @@ pub struct ComboNumber {
     pub score1: usize,
     pub score2: usize,
 }
-
-#[derive(Resource)]
-struct GreetTimer(Timer);
 
 fn setup_camera(
     mut commands: Commands,
@@ -466,20 +457,6 @@ fn setup_camera(
     evt_w.send(GenEvent(2, 3));
 }
 
-fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<Colortext>>) {
-    for mut text in &mut query {
-        let seconds = time.elapsed_seconds();
-
-        // Update the color of the first and only section.
-        text.sections[0].style.color = Color::Rgba {
-            red: (1.25 * seconds).sin() / 2.0 + 0.5,
-            green: (0.75 * seconds).sin() / 2.0 + 0.5,
-            blue: (0.50 * seconds).sin() / 2.0 + 0.5,
-            alpha: 1.0,
-        };
-    }
-}
-
 pub fn score_system(
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
@@ -547,6 +524,7 @@ fn counter1_update_system(
         text.sections[1].value = counter.score1.to_string();
     }
 }
+
 fn counter2_update_system(
     counter: Res<CounterNumber>,
     mut query: Query<&mut Text, With<CounterText2>>,
@@ -561,22 +539,9 @@ fn combo1_update_system(oombo: Res<ComboNumber>, mut query: Query<&mut Text, Wit
         text.sections[1].value = oombo.score1.to_string();
     }
 }
+
 fn combo2_update_system(combo: Res<ComboNumber>, mut query: Query<&mut Text, With<ComboText2>>) {
     for mut text in &mut query {
         text.sections[1].value = combo.score2.to_string();
     }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)] //+, Reflect, Serialize, Deserialize#[reflect(Serialize, Deserialize)]
-pub enum JustifyText {
-    /// Leftmost character is immediately to the right of the render position.
-    /// Bounds start from the render position and advance rightwards.
-    #[default]
-    Left,
-    /// Leftmost & rightmost characters are equidistant to the render position.
-    /// Bounds start from the render position and advance equally left & right.
-    Center,
-    /// Rightmost character is immediately to the left of the render position.
-    /// Bounds start from the render position and advance leftwards.
-    Right,
 }
