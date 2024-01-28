@@ -402,6 +402,9 @@ fn sound_timer(
         for k in &sound_player.past_key {
             s += k.to_string().as_str();
         }
+        for _ in sound_player.past_key.len()..sound_player.action.keys.len() {
+            s += " ";
+        }
         if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.past_text_id) {
             text.sections[0].value = s;
         }
