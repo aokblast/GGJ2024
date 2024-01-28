@@ -1,6 +1,6 @@
-pub mod game_level;
-pub mod character_selection;
 pub mod art;
+pub mod character_selection;
+pub mod game_level;
 
 use std::time::Duration;
 

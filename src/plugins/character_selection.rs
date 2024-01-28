@@ -25,22 +25,23 @@ fn setup_character_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
     let img_path = "images/ui/scenes/選角畫面.png";
     let bg_img = asset_server.load(img_path);
 
-    commands.spawn(
-        (SpriteBundle {
+    commands.spawn((
+        SpriteBundle {
             texture: bg_img,
             transform: Transform {
                 translation: Vec3::new(0., 0., -5.),
                 ..default()
             },
             ..default()
-        }, CharacterSelectionMenuTag),
-    );
+        },
+        CharacterSelectionMenuTag,
+    ));
 
     let img_path = "images/ui/scenes/選角畫面_冥進_token.png";
     let left_party_img = asset_server.load(img_path);
     let left_pos = Vec3::new(-500., -75., 0.);
-    commands.spawn(
-        (SpriteBundle {
+    commands.spawn((
+        SpriteBundle {
             sprite: Sprite {
                 color: NORMAL_COLOR,
                 ..default()
@@ -52,14 +53,15 @@ fn setup_character_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
             },
             texture: left_party_img,
             ..default()
-        }, CharacterSelectionMenuTag),
-    );
+        },
+        CharacterSelectionMenuTag,
+    ));
 
     let img_path = "images/ui/scenes/選角畫面_大甲_token.png";
     let left_right_img = asset_server.load(img_path);
     let right_pos = Vec3::new(500., -75., 0.);
-    commands.spawn(
-        (SpriteBundle {
+    commands.spawn((
+        SpriteBundle {
             sprite: Sprite {
                 color: NORMAL_COLOR,
                 ..default()
@@ -71,8 +73,9 @@ fn setup_character_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
             },
             texture: left_right_img,
             ..default()
-        }, CharacterSelectionMenuTag),
-    );
+        },
+        CharacterSelectionMenuTag,
+    ));
 }
 
 fn hover_feedback_system(mut query: Query<(&Interaction, &mut Sprite), Changed<Interaction>>) {

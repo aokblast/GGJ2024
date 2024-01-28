@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::plugins::art::artPlugin;
 use crate::ringcon::RingConEvent;
 use bevy::app::AppExit;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
@@ -22,6 +21,7 @@ use bevy::{
 use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
 use dlopen2::wrapper::Container;
+use plugins::art::{self, artPlugin, create_people_system};
 use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
