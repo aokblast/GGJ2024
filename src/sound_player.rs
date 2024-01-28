@@ -1,9 +1,11 @@
+use crate::config::ImageKey;
+use crate::{AppState, AttackEvent};
 use bevy::prelude::*;
+use bevy_tweening::lens::TransformPositionLens;
+use bevy_tweening::{Animator, EaseFunction, Tween};
 use rand::Rng;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::vec;
-
-use crate::{main, score_system, AttackEvent, ComboNumber, CounterNumber};
 
 #[derive(PartialEq, Eq)]
 pub enum ActionType {
@@ -26,7 +28,7 @@ pub struct SoundPlayer {
     start_time: u128,
     action_start_time: u128,
     pub past_key: Vec<i32>,
-    has_started: bool,
+    pub has_started: bool,
     last_step: u128,
     pub sound_id: Entity,
     pub goal_text_id: Entity,
@@ -192,5 +194,105 @@ impl SoundPlayer {
         self.last_step = (since_the_epoch.as_millis() - self.start_time) / self.interval;
 
         return true;
+    }
+}
+
+#[derive(Debug)]
+pub struct SoundSystemPlugin;
+
+impl Plugin for SoundSystemPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (produce_beat_system, move_beat_system).run_if(in_state(AppState::InGame)),
+        );
+    }
+}
+
+#[derive(Debug, Component)]
+pub struct BeatTimer(pub Timer);
+
+#[derive(Debug, Component)]
+pub struct MoveBeat {
+    pub from: Vec2,
+    pub to: Vec2,
+    pub duration: Duration,
+}
+
+const BEAT_START: Vec2 = Vec2::new(0., 400.);
+const BEAT_END_P1: Vec2 = Vec2::new(-500., 400.);
+const BEAT_END_P2: Vec2 = Vec2::new(500., 400.);
+
+fn produce_beat_system(
+    mut query: Query<(&SoundPlayer, &mut BeatTimer)>,
+    time: Res<Time>,
+    mut commands: Commands,
+) {
+    for (sound_player, mut beat_timer) in &mut query {
+        if !sound_player.has_started {
+            continue;
+        }
+
+        beat_timer.0.tick(time.delta());
+        if beat_timer.0.just_finished() {
+            let duration = Duration::from_millis(sound_player.interval as u64);
+            match sound_player.action.action_type {
+                ActionType::Player1 => {
+                    eprintln!("beat p1");
+                    commands.spawn(MoveBeat {
+                        from: BEAT_START,
+                        to: BEAT_END_P1,
+                        duration,
+                    });
+                }
+                ActionType::Player2 => {
+                    eprintln!("beat p2");
+                    commands.spawn(MoveBeat {
+                        from: BEAT_START,
+                        to: BEAT_END_P2,
+                        duration,
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn move_beat_system(
+    mut commands: Commands,
+    query: Query<(Entity, &MoveBeat)>,
+    asset_server: Res<AssetServer>,
+) {
+    for (ent, mb) in &query {
+        let MoveBeat { from, to, duration } = *mb;
+        let z = -20.;
+        let from = Vec3::new(from.x, from.y, z);
+        let to = Vec3::new(to.x, to.y, z);
+        let tween = Tween::new(
+            EaseFunction::BackInOut,
+            duration,
+            TransformPositionLens {
+                start: from,
+                end: to,
+            },
+        );
+
+        let img = asset_server.load(format!("images/{}", ImageKey::GenShinStart));
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(50., 50.)),
+                    ..Default::default()
+                },
+                texture: img,
+                transform: Transform {
+                    translation: from,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            Animator::new(tween),
+        ));
+        commands.entity(ent).despawn();
     }
 }
