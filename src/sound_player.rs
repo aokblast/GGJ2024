@@ -1,39 +1,42 @@
 use bevy::prelude::*;
+use rand::Rng;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::vec;
 
 use crate::{main, score_system, AttackEvent, ComboNumber, CounterNumber};
 
+#[derive(PartialEq, Eq)]
 pub enum ActionType {
-    Attack,
-    Defence,
-    Shoot,
+    Player1,
+    Player2,
 }
 
 pub struct Action {
-    keys: Vec<i32>,
-    action_type: ActionType,
+    pub keys: Vec<i32>,
+    pub action_type: ActionType,
 }
 
-#[derive(Resource)]
-pub struct StepSound(pub Handle<AudioSource>);
+#[derive(Component)]
+pub struct Sound(pub Handle<AudioSource>);
 
-#[derive(Resource)]
+#[derive(Component)]
 pub struct SoundPlayer {
-    actions: Vec<Action>,
+    pub action: Action,
     interval: u128,
     start_time: u128,
     action_start_time: u128,
     pub past_key: Vec<i32>,
     has_started: bool,
     last_step: u128,
-    max_key: usize,
+    pub sound_id: Entity,
+    pub goal_text_id: Entity,
+    pub past_text_id: Entity,
 }
 
 impl Action {
-    pub fn new(keys: Vec<i32>, action_type: ActionType) -> Self {
+    pub fn new(action_type: ActionType) -> Self {
         Self {
-            keys: keys,
+            keys: vec![],
             action_type: action_type,
         }
     }
@@ -47,24 +50,24 @@ fn vec_compare(va: &[i32], vb: &[i32]) -> bool {
 }
 
 impl SoundPlayer {
-    pub fn new(interval: u128) -> Self {
+    pub fn new(
+        interval: u128,
+        action_type: ActionType,
+        sound_id: Entity,
+        goal_text_id: Entity,
+        past_text_id: Entity,
+    ) -> Self {
         Self {
-            actions: vec![],
+            action: Action::new(action_type),
             interval,
             start_time: 0,
             action_start_time: 0,
             past_key: vec![],
             has_started: false,
             last_step: 0,
-            max_key: 0,
-        }
-    }
-
-    pub fn add_action(&mut self, action: Action) {
-        let l = action.keys.len();
-        self.actions.push(action);
-        if l > self.max_key {
-            self.max_key = l;
+            sound_id,
+            goal_text_id,
+            past_text_id,
         }
     }
 
@@ -74,20 +77,27 @@ impl SoundPlayer {
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
         self.start_time = since_the_epoch.as_millis();
+        self.reroll();
         self.has_started = true;
+    }
+
+    fn reroll(&mut self) {
+        self.action.keys.clear();
+        let len = rand::thread_rng().gen_range(1..6);
+        for _ in 0..len {
+            self.action.keys.push(rand::thread_rng().gen_range(1..4));
+        }
     }
 
     fn do_action(&self, action_type: &ActionType, evt_w: &mut EventWriter<AttackEvent>) {
         match action_type {
-            ActionType::Attack => {
-                println!("Attack");
+            ActionType::Player1 => {
+                println!("Player1");
                 evt_w.send(AttackEvent(1, true));
             }
-            ActionType::Defence => {
-                println!("Defence");
-            }
-            ActionType::Shoot => {
-                println!("Shoot");
+            ActionType::Player2 => {
+                println!("Player2");
+                evt_w.send(AttackEvent(2, true));
             }
         }
     }
@@ -145,16 +155,12 @@ impl SoundPlayer {
         println!("{}", key);
 
         self.past_key.push(key);
-        let match_action = self
-            .actions
-            .iter()
-            .filter(|a| vec_compare(&a.keys, &self.past_key))
-            .next();
 
-        if let Some(a) = match_action {
+        if vec_compare(&self.action.keys, &self.past_key) {
             self.past_key.clear();
-            self.do_action(&a.action_type, evt_w);
-        } else if self.past_key.len() >= self.max_key {
+            self.do_action(&self.action.action_type, evt_w);
+            self.reroll();
+        } else if self.past_key.len() >= self.action.keys.len() {
             println!("wrong combo");
             self.fail(evt_w);
             self.past_key.clear();
@@ -165,7 +171,7 @@ impl SoundPlayer {
         self.has_started = false;
     }
 
-    pub fn update(&mut self, mut commands: Commands, sound: Res<StepSound>) -> bool {
+    pub fn update(&mut self) -> bool {
         if !self.has_started {
             return false;
         }
@@ -177,34 +183,6 @@ impl SoundPlayer {
             return false;
         }
         self.last_step = (since_the_epoch.as_millis() - self.start_time) / self.interval;
-
-        commands.spawn(AudioBundle {
-            source: sound.0.clone(),
-            // auto-despawn the entity when playback finishes
-            settings: PlaybackSettings::DESPAWN,
-        });
-
-        // if self.action_start_time != 0 {
-        //     let passing_keys = (since_the_epoch.as_millis() - self.action_start_time
-        //         + self.interval / 2)
-        //         / self.interval;
-
-        //     let missing_key = 1 + passing_keys as usize - self.past_key.len();
-
-        //     for _ in 1..missing_key {
-        //         self.past_key.push(0);
-        //     }
-        //     for k in &self.past_key {
-        //         print!("{}, ", k);
-        //     }
-        //     if self.past_key.len() >= 3 {
-        //         println!("wrong combo");
-        //         self.past_key.clear();
-        //         self.action_start_time = 0;
-        //     }
-
-        //     println!("");
-        // }
 
         return true;
     }

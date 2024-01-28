@@ -77,39 +77,84 @@ enum AppState {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let sound1 = Sound(asset_server.load("sounds/gong.ogg"));
+    let sound2 = Sound(asset_server.load("sounds/gong.ogg"));
+    let t11 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(150.0),
+        left: Val::Px(5.0),
+        ..default()
+    });
+    let t12 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(250.0),
+        left: Val::Px(5.0),
+        ..default()
+    });
+    let t21 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(150.0),
+        right: Val::Px(5.0),
+        ..default()
+    });
+    let t22 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(250.0),
+        right: Val::Px(5.0),
+        ..default()
+    });
+
+    let sound1_id = commands.spawn(sound1).id();
+    let sound2_id = commands.spawn(sound2).id();
+    let t11_id = commands.spawn(t11).id();
+    let t12_id = commands.spawn(t12).id();
+    let t21_id = commands.spawn(t21).id();
+    let t22_id = commands.spawn(t22).id();
+
+    let sound_player1: SoundPlayer =
+        SoundPlayer::new(1000, ActionType::Player1, sound1_id, t11_id, t12_id);
+    let sound_player2: SoundPlayer =
+        SoundPlayer::new(1000, ActionType::Player2, sound2_id, t21_id, t22_id);
+
+    commands.spawn(sound_player1);
+    commands.spawn(sound_player2);
     commands.spawn(Camera2dBundle::default());
 
-    let mut sound_player: SoundPlayer = SoundPlayer::new(1000);
-    sound_player.add_action(Action::new(vec![1, 2, 2], ActionType::Attack));
-
-    commands.insert_resource(sound_player);
-
-    let ball_collision_sound = asset_server.load("sounds/gong.ogg");
-    commands.insert_resource(StepSound(ball_collision_sound));
-
-    let ball_collision_sound = asset_server.load("sounds/A.ogg");
-    commands.insert_resource(ASound(ball_collision_sound));
-    let ball_collision_sound = asset_server.load("sounds/W.ogg");
-    commands.insert_resource(WSound(ball_collision_sound));
-    let ball_collision_sound = asset_server.load("sounds/D.ogg");
-    commands.insert_resource(DSound(ball_collision_sound));
-
-    commands.spawn((
-        TextBundle::from_section(
-            "",
-            TextStyle {
-                font_size: 100.0,
-                ..default()
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(150.0),
-            left: Val::Px(5.0),
-            ..default()
-        }),
-        PastKeys,
-    ));
+    commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
+    commands.insert_resource(WSound(asset_server.load("sounds/W.ogg")));
+    commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
 }
 
 #[derive(Resource)]
@@ -265,7 +310,7 @@ fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
 fn phah(
     mut commands: Commands,
     mut events: EventReader<KeyboardInput>,
-    mut sound_player: ResMut<SoundPlayer>,
+    mut query: Query<&mut SoundPlayer>,
     a: Res<ASound>,
     w: Res<WSound>,
     d: Res<DSound>,
@@ -273,63 +318,95 @@ fn phah(
 ) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
-            match event.key_code {
-                Some(KeyCode::A) => {
+            if event.key_code == Some(KeyCode::Space) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::GenShinStart,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            for mut sound_player in &mut query {
+                let is_player_1 = sound_player.action.action_type == ActionType::Player1;
+                if event.key_code
+                    == if is_player_1 {
+                        Some(KeyCode::A)
+                    } else {
+                        Some(KeyCode::G)
+                    }
+                {
                     commands.spawn(AudioBundle {
                         source: a.0.clone(),
-                        // auto-despawn the entity when playback finishes
                         settings: PlaybackSettings::DESPAWN,
                     });
                     sound_player.key_down(1, &mut evt_w);
                 }
-                Some(KeyCode::W) => {
+                if event.key_code
+                    == if is_player_1 {
+                        Some(KeyCode::W)
+                    } else {
+                        Some(KeyCode::Y)
+                    }
+                {
                     commands.spawn(AudioBundle {
                         source: w.0.clone(),
-                        // auto-despawn the entity when playback finishes
                         settings: PlaybackSettings::DESPAWN,
                     });
                     sound_player.key_down(2, &mut evt_w);
                 }
-                Some(KeyCode::D) => {
+                if event.key_code
+                    == if is_player_1 {
+                        Some(KeyCode::D)
+                    } else {
+                        Some(KeyCode::J)
+                    }
+                {
                     commands.spawn(AudioBundle {
                         source: d.0.clone(),
-                        // auto-despawn the entity when playback finishes
                         settings: PlaybackSettings::DESPAWN,
                     });
                     sound_player.key_down(3, &mut evt_w);
                 }
-                Some(KeyCode::O) => {
+                if event.key_code == Some(KeyCode::O) {
                     println!("start");
                     sound_player.start();
                 }
-                Some(KeyCode::Space) => {
-                    commands.spawn(JumpImage {
-                        key: ImageKey::GenShinStart,
-                        from: Vec2::new(-960., 0.),
-                        to: Vec2::new(-240., 0.),
-                    });
-                }
-                _ => continue,
             }
         }
     }
 }
 
 fn sound_timer(
-    mut sound_player: ResMut<SoundPlayer>,
-    commands: Commands,
-    sound: Res<StepSound>,
-    mut query: Query<&mut Text, With<PastKeys>>,
+    mut commands: Commands,
+    mut query: Query<&mut SoundPlayer>,
+    mut text_query: Query<&mut Text>,
+    sound_query: Query<&Sound>,
 ) {
-    for mut text in &mut query {
+    for mut sound_player in &mut query {
+        if sound_player.update() {
+            if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
+                commands.spawn(AudioBundle {
+                    source: sound.0.clone(),
+                    // auto-despawn the entity when playback finishes
+                    settings: PlaybackSettings::DESPAWN,
+                });
+            }
+        }
         let mut s = "".to_owned();
         for k in &sound_player.past_key {
             s += k.to_string().as_str();
         }
-        text.sections[0].value = s;
-    }
+        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.past_text_id) {
+            text.sections[0].value = s;
+        }
 
-    sound_player.update(commands, sound);
+        s = "".to_owned();
+        for k in &sound_player.action.keys {
+            s += k.to_string().as_str();
+        }
+        if let Ok(mut text) = text_query.get_component_mut::<Text>(sound_player.goal_text_id) {
+            text.sections[0].value = s;
+        }
+    }
 }
 
 #[derive(Component)]
