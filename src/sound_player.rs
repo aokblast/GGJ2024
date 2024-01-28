@@ -89,7 +89,7 @@ impl SoundPlayer {
         }
     }
 
-    fn do_action(&self, action_type: &ActionType, evt_w: &mut EventWriter<AttackEvent>) {
+    fn do_action(action_type: &ActionType, evt_w: &mut EventWriter<AttackEvent>) {
         match action_type {
             ActionType::Player1 => {
                 println!("Player1");
@@ -103,7 +103,14 @@ impl SoundPlayer {
     }
 
     fn fail(&self, evt_w: &mut EventWriter<AttackEvent>) {
-        evt_w.send(AttackEvent(1, false));
+        evt_w.send(AttackEvent(
+            if self.action.action_type == ActionType::Player1 {
+                1
+            } else {
+                2
+            },
+            false,
+        ));
     }
 
     pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>) {
@@ -158,7 +165,7 @@ impl SoundPlayer {
 
         if vec_compare(&self.action.keys, &self.past_key) {
             self.past_key.clear();
-            self.do_action(&self.action.action_type, evt_w);
+            Self::do_action(&self.action.action_type, evt_w);
             self.reroll();
         } else if self.past_key.len() >= self.action.keys.len() {
             println!("wrong combo");
