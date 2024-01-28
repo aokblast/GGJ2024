@@ -381,6 +381,34 @@ fn phah(
                 evt_exit.send(AppExit);
             }
 
+            if event.key_code == Some(KeyCode::G) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::GenShinStart,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::H) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::Monkey,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::J) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::NetArmy,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::K) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::MaZu,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
             for mut sound_player in &mut query {
                 match sound_player.action.action_type {
                     ActionType::Player1 => match event.key_code {
