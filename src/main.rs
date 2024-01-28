@@ -34,12 +34,19 @@ pub struct DSound(pub Handle<AudioSource>);
 fn main() {
     App::new()
         .add_event::<AttackEvent>()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (1920., 1080.).into(),
+                resizable: false,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
         .add_state::<AppState>()
         // third-party plugins
         .add_plugins(TweeningPlugin)
         // our plugins
-        .add_plugins((JumpImagePlugin, GameLevelUiPlugin))
+        .add_plugins((JumpImagePlugin, GameLevelUiPlugin, SoundSystemPlugin))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
@@ -150,13 +157,33 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let t21_id = commands.spawn(t21).id();
     let t22_id = commands.spawn(t22).id();
 
-    let sound_player1: SoundPlayer =
-        SoundPlayer::new(1000, ActionType::Player1, sound1_id, t11_id, t12_id);
-    let sound_player2: SoundPlayer =
-        SoundPlayer::new(1000, ActionType::Player2, sound2_id, t21_id, t22_id);
+    let sound_interval = 1000;
+    let sound_player1: SoundPlayer = SoundPlayer::new(
+        sound_interval,
+        ActionType::Player1,
+        sound1_id,
+        t11_id,
+        t12_id,
+    );
+    let sound_player2: SoundPlayer = SoundPlayer::new(
+        sound_interval,
+        ActionType::Player2,
+        sound2_id,
+        t21_id,
+        t22_id,
+    );
 
-    commands.spawn(sound_player1);
-    commands.spawn(sound_player2);
+    // attach beat timer to sound player
+    // TODO: move this system to SoundSystemPlugin
+    let sound_timer = Timer::new(
+        Duration::from_millis(sound_interval as u64),
+        TimerMode::Repeating,
+    );
+    commands
+        .spawn(sound_player1)
+        .insert(BeatTimer(sound_timer.clone()));
+    commands.spawn(sound_player2).insert(BeatTimer(sound_timer));
+
     commands.spawn(Camera2dBundle::default());
 
     commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
@@ -322,6 +349,7 @@ fn phah(
     w: Res<WSound>,
     d: Res<DSound>,
     mut evt_w: EventWriter<AttackEvent>,
+    mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
 ) {
     for event in events.read() {
         if event.state == ButtonState::Pressed {
@@ -375,7 +403,7 @@ fn phah(
                 }
                 if event.key_code == Some(KeyCode::O) {
                     println!("start");
-                    sound_player.start();
+                    sound_player.start(&mut sound_start_evt_w);
                 }
             }
         }
@@ -465,6 +493,10 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background = asset_server.load("images/background.png");
     commands.spawn(SpriteBundle {
         texture: background,
+        transform: Transform {
+            translation: Vec3::new(0., 0., -10.),
+            ..default()
+        },
         ..Default::default()
     });
     // commands.spawn((
