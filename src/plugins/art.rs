@@ -1,5 +1,3 @@
-//pub mod game_level;
-
 use crate::{config::ImageKey, GenEvent};
 use bevy::{math::vec2, prelude::*, sprite::Anchor, transform::commands};
 use bevy_tweening::{
@@ -81,9 +79,9 @@ pub fn gen_people(mut commands: Commands, mut evt_r: EventReader<GenEvent>) {
     for e in evt_r.read() {
         let floor = -50.;
         let roof = 50.;
-        let che = 300.;
-        let lo = 5.;
-        let hi = 500.;
+        let che = 500.;
+        let lo = 50.;
+        let hi = 800.;
         let mut rng = thread_rng();
         let r = rng.gen_range(lo..hi);
         if e.0 == 1 {

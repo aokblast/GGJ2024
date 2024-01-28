@@ -4,7 +4,9 @@ mod ringcon;
 mod sound_player;
 
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ringcon::RingConEvent;
 use bevy::app::AppExit;
@@ -20,6 +22,7 @@ use bevy_tweening::TweeningPlugin;
 use config::ImageKey;
 use dlopen2::wrapper::Container;
 use plugins::art::{self, artPlugin, create_people_system};
+use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
 use ringcon::RingConPlugin;
@@ -33,6 +36,15 @@ pub struct ASound(pub Handle<AudioSource>);
 
 #[derive(Resource)]
 pub struct DSound(pub Handle<AudioSource>);
+
+#[derive(Debug, Event)]
+struct GenEvent(i32, i32); //player/img
+
+#[derive(Resource)]
+pub struct ScoreSetting {
+    pub basic_score: usize,
+    pub combo_score: usize,
+}
 
 fn main() {
     App::new()
@@ -50,7 +62,12 @@ fn main() {
         // third-party plugins
         .add_plugins(TweeningPlugin)
         // our plugins
-        .add_plugins((JumpImagePlugin, GameLevelUiPlugin, SoundSystemPlugin))
+        .add_plugins((
+            JumpImagePlugin,
+            GameLevelUiPlugin,
+            SoundSystemPlugin,
+            CharacterSelectionPlugin,
+        ))
         .add_plugins(artPlugin)
         .add_systems(Startup, setup)
         .add_systems(OnEnter(AppState::Menu), setup_menu)
@@ -96,6 +113,7 @@ fn main() {
 enum AppState {
     #[default]
     Menu,
+    CharacterSelection,
     InGame,
 }
 
@@ -211,98 +229,68 @@ const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
 
-fn setup_menu(mut commands: Commands) {
-    let game_title_ = commands
-        .spawn(NodeBundle {
-            style: Style {
-                // center button
-                width: Val::Percent(100.),
-                height: Val::Percent(100.),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Start,
+#[derive(Debug, Component)]
+struct StartMenuTag;
+
+fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // background image
+    let img_path = "images/ui/scenes/起始畫面.png";
+    let img = asset_server.load(img_path);
+    commands.spawn((
+        SpriteBundle {
+            texture: img,
+            transform: Transform {
+                translation: Vec3::new(0., 0., -10.),
                 ..default()
             },
             ..default()
-        })
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "GAME NAME HERE",
-                TextStyle {
-                    font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
-                    ..default()
-                },
-            ));
-        });
-    let button_single_player_entity = commands
+        },
+        StartMenuTag,
+    ));
+
+    // "play" button
+    let img_path = "images/ui/scenes/起始畫面_play_token.png";
+    let img = asset_server.load(img_path);
+    commands
         .spawn(NodeBundle {
             style: Style {
-                // center button
-                width: Val::Percent(100.),
-                height: Val::Percent(100.),
-                justify_content: JustifyContent::Center,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 align_items: AlignItems::Center,
-                ..default()
-            },
-            ..default()
-        })
-        .with_children(|parent| {
-            parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        width: Val::Px(200.),
-                        height: Val::Px(100.),
-                        // horizontally center child text
-                        justify_content: JustifyContent::Center,
-                        // vertically center child text
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    background_color: NORMAL_BUTTON.into(),
-                    ..default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        "Single player",
-                        TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..default()
-                        },
-                    ));
-                });
-        })
-        .id();
-    let button_double_player_entity = commands
-        .spawn(NodeBundle {
-            style: Style {
-                // center button
-                width: Val::Percent(100.),
-                height: Val::Percent(100.),
                 justify_content: JustifyContent::Center,
-                align_items: AlignItems::End,
                 ..default()
             },
             ..default()
         })
         .with_children(|parent| {
             parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        width: Val::Px(200.),
-                        height: Val::Px(100.),
-                        // horizontally center child text
-                        justify_content: JustifyContent::Center,
-                        // vertically center child text
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        // HACK: hard-coded size
+                        style: Style {
+                            width: Val::Px(206.),
+                            height: Val::Px(100.),
+                            margin: UiRect {
+                                top: Val::Px(240.),
+                                ..default()
+                            },
+                            ..default()
+                        },
+                        image: UiImage {
+                            texture: img,
+                            ..default()
+                        },
+                        transform: Transform {
+                            translation: Vec3::new(0., -187., 0.),
+                            ..default()
+                        },
                         ..default()
                     },
-                    background_color: NORMAL_BUTTON.into(),
-                    ..default()
-                })
+                    StartMenuTag,
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
-                        "Double player",
+                        " ",
                         TextStyle {
                             font_size: 40.0,
                             color: Color::rgb(0.9, 0.9, 0.9),
@@ -310,12 +298,7 @@ fn setup_menu(mut commands: Commands) {
                         },
                     ));
                 });
-        })
-        .id();
-    commands.insert_resource(MenuData {
-        button_single_player_entity,
-        button_double_player_entity,
-    });
+        });
 }
 
 fn menu(
@@ -328,26 +311,18 @@ fn menu(
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                *color = PRESSED_BUTTON.into();
+                // next_state.set(AppState::CharacterSelection);
                 next_state.set(AppState::InGame);
             }
-            Interaction::Hovered => {
-                *color = HOVERED_BUTTON.into();
-            }
-            Interaction::None => {
-                *color = NORMAL_BUTTON.into();
-            }
+            _ => {}
         }
     }
 }
 
-fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
-    commands
-        .entity(menu_data.button_single_player_entity)
-        .despawn_recursive();
-    commands
-        .entity(menu_data.button_double_player_entity)
-        .despawn_recursive();
+fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<StartMenuTag>>) {
+    for ent in &query {
+        commands.entity(ent).despawn_recursive();
+    }
 }
 
 fn phah(
@@ -396,7 +371,7 @@ fn phah(
         if event.state == ButtonState::Pressed {
             if event.key_code == Some(KeyCode::Space) {
                 commands.spawn(JumpImage {
-                    key: ImageKey::GenShinStart,
+                    key: ImageKey::WhyHaRuHiKaGe,
                     from: Vec2::new(-960., 0.),
                     to: Vec2::new(-240., 0.),
                 });
@@ -406,6 +381,34 @@ fn phah(
                 evt_exit.send(AppExit);
             }
 
+            if event.key_code == Some(KeyCode::G) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::GenShinStart,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::H) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::Monkey,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::J) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::NetArmy,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
+            if event.key_code == Some(KeyCode::K) {
+                commands.spawn(JumpImage {
+                    key: ImageKey::MaZu,
+                    from: Vec2::new(-960., 0.),
+                    to: Vec2::new(-240., 0.),
+                });
+            }
             for mut sound_player in &mut query {
                 match sound_player.action.action_type {
                     ActionType::Player1 => match event.key_code {
@@ -528,9 +531,6 @@ struct CounterText2;
 #[derive(Debug, Event)]
 struct AttackEvent(i32, bool);
 
-#[derive(Debug, Event)]
-struct GenEvent(i32, i32); //player/img
-
 #[derive(Component)]
 struct PastKeys;
 
@@ -539,12 +539,6 @@ struct ComboText1;
 
 #[derive(Component)]
 struct ComboText2;
-
-#[derive(Resource)]
-pub struct ScoreSetting {
-    pub basic_score: usize,
-    pub combo_score: usize,
-}
 
 #[derive(Resource)]
 pub struct CounterNumber {

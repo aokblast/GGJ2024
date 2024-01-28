@@ -18,7 +18,10 @@ macro_rules! define_enum_and_to_string {
 define_enum_and_to_string! {
     ImageKey {
         // 為什麼要演奏春日影
-        WhyHaRuHiKaGe => "foo",
+        WhyHaRuHiKaGe => "ui/特效圖片/為什麼要演奏春日影！.png",
+        MaZu => "ui/特效圖片/媽祖.png",
+        Monkey => "ui/特效圖片/山道猴子.png",
+        NetArmy => "ui/特效圖片/為什麼要演奏春日影！.png",
         GenShinStart => "genshin-start.png"
     }
 }

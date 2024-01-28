@@ -1,4 +1,5 @@
-pub(crate) mod art;
+pub mod art;
+pub mod character_selection;
 pub mod game_level;
 
 use std::time::Duration;
@@ -60,6 +61,10 @@ fn spawn_jump_image(
                 sprite: Sprite {
                     anchor: Anchor::Center,
                     ..Default::default()
+                },
+                transform: Transform {
+                    translation: from,
+                    ..default()
                 },
                 texture: img,
                 ..default()
