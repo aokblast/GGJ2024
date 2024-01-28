@@ -21,6 +21,15 @@ pub struct Action {
 #[derive(Component)]
 pub struct Sound(pub Handle<AudioSource>);
 
+#[derive(Resource)]
+pub struct WSound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct ASound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct DSound(pub Handle<AudioSource>);
+
 #[derive(Event)]
 pub struct SoundPlayerStart(pub ActionType);
 
@@ -196,20 +205,121 @@ impl SoundPlayer {
     }
 }
 
+fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let sound1 = Sound(asset_server.load("sounds/gong.ogg"));
+    let sound2 = Sound(asset_server.load("sounds/gong.ogg"));
+    let t11 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(150.0),
+        left: Val::Px(5.0),
+        ..default()
+    });
+    let t12 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(250.0),
+        left: Val::Px(5.0),
+        ..default()
+    });
+    let t21 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(150.0),
+        right: Val::Px(5.0),
+        ..default()
+    });
+    let t22 = TextBundle::from_section(
+        "",
+        TextStyle {
+            font_size: 100.0,
+            color: Color::ORANGE,
+            ..default()
+        },
+    )
+    .with_style(Style {
+        position_type: PositionType::Absolute,
+        top: Val::Px(250.0),
+        right: Val::Px(5.0),
+        ..default()
+    });
+
+    let sound1_id = commands.spawn(sound1).id();
+    let sound2_id = commands.spawn(sound2).id();
+    let t11_id = commands.spawn(t11).id();
+    let t12_id = commands.spawn(t12).id();
+    let t21_id = commands.spawn(t21).id();
+    let t22_id = commands.spawn(t22).id();
+
+    let sound_interval = 1000;
+    let sound_player1: SoundPlayer = SoundPlayer::new(
+        sound_interval,
+        ActionType::Player1,
+        sound1_id,
+        t11_id,
+        t12_id,
+    );
+    let sound_player2: SoundPlayer = SoundPlayer::new(
+        sound_interval,
+        ActionType::Player2,
+        sound2_id,
+        t21_id,
+        t22_id,
+    );
+
+    // attach beat timer to sound player
+    // TODO: move this system to SoundSystemPlugin
+    let sound_timer = Timer::new(
+        Duration::from_millis(sound_interval as u64),
+        TimerMode::Repeating,
+    );
+    commands
+        .spawn(sound_player1)
+        .insert(BeatTimer(sound_timer.clone()));
+    commands.spawn(sound_player2).insert(BeatTimer(sound_timer));
+
+    commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
+    commands.insert_resource(WSound(asset_server.load("sounds/W.ogg")));
+    commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
+}
+
 #[derive(Debug)]
 pub struct SoundSystemPlugin;
 
 impl Plugin for SoundSystemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SoundPlayerStart>().add_systems(
-            Update,
-            (
-                produce_beat_system,
-                move_beat_system,
-                produce_beat_on_player_start,
-            )
-                .run_if(in_state(AppState::InGame)),
-        );
+        app.add_event::<SoundPlayerStart>()
+            .add_systems(Startup, setup_sound_system)
+            .add_systems(
+                Update,
+                (
+                    produce_beat_system,
+                    move_beat_system,
+                    produce_beat_on_player_start,
+                )
+                    .run_if(in_state(AppState::InGame)),
+            );
     }
 }
 

@@ -20,15 +20,6 @@ use plugins::game_level::GameLevelUiPlugin;
 use plugins::{JumpImage, JumpImagePlugin};
 use sound_player::*;
 
-#[derive(Resource)]
-pub struct WSound(pub Handle<AudioSource>);
-
-#[derive(Resource)]
-pub struct ASound(pub Handle<AudioSource>);
-
-#[derive(Resource)]
-pub struct DSound(pub Handle<AudioSource>);
-
 #[derive(Debug, Event)]
 struct GenEvent(i32, i32); //player/img
 
@@ -63,7 +54,9 @@ fn main() {
             RingConPlugin,
         ))
         .add_plugins(ArtPlugin)
-        .add_systems(Startup, setup)
+        .add_systems(Startup, |mut commands: Commands| {
+            commands.spawn(Camera2dBundle::default());
+        })
         .add_systems(OnEnter(AppState::Menu), setup_menu)
         .add_systems(Update, menu.run_if(in_state(AppState::Menu)))
         .add_systems(OnExit(AppState::Menu), cleanup_menu)
@@ -109,107 +102,6 @@ enum AppState {
     Menu,
     CharacterSelection,
     InGame,
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let sound1 = Sound(asset_server.load("sounds/gong.ogg"));
-    let sound2 = Sound(asset_server.load("sounds/gong.ogg"));
-    let t11 = TextBundle::from_section(
-        "",
-        TextStyle {
-            font_size: 100.0,
-            color: Color::ORANGE,
-            ..default()
-        },
-    )
-    .with_style(Style {
-        position_type: PositionType::Absolute,
-        top: Val::Px(150.0),
-        left: Val::Px(5.0),
-        ..default()
-    });
-    let t12 = TextBundle::from_section(
-        "",
-        TextStyle {
-            font_size: 100.0,
-            color: Color::ORANGE,
-            ..default()
-        },
-    )
-    .with_style(Style {
-        position_type: PositionType::Absolute,
-        top: Val::Px(250.0),
-        left: Val::Px(5.0),
-        ..default()
-    });
-    let t21 = TextBundle::from_section(
-        "",
-        TextStyle {
-            font_size: 100.0,
-            color: Color::ORANGE,
-            ..default()
-        },
-    )
-    .with_style(Style {
-        position_type: PositionType::Absolute,
-        top: Val::Px(150.0),
-        right: Val::Px(5.0),
-        ..default()
-    });
-    let t22 = TextBundle::from_section(
-        "",
-        TextStyle {
-            font_size: 100.0,
-            color: Color::ORANGE,
-            ..default()
-        },
-    )
-    .with_style(Style {
-        position_type: PositionType::Absolute,
-        top: Val::Px(250.0),
-        right: Val::Px(5.0),
-        ..default()
-    });
-
-    let sound1_id = commands.spawn(sound1).id();
-    let sound2_id = commands.spawn(sound2).id();
-    let t11_id = commands.spawn(t11).id();
-    let t12_id = commands.spawn(t12).id();
-    let t21_id = commands.spawn(t21).id();
-    let t22_id = commands.spawn(t22).id();
-
-    let sound_interval = 1000;
-    let sound_player1: SoundPlayer = SoundPlayer::new(
-        sound_interval,
-        ActionType::Player1,
-        sound1_id,
-        t11_id,
-        t12_id,
-    );
-    let sound_player2: SoundPlayer = SoundPlayer::new(
-        sound_interval,
-        ActionType::Player2,
-        sound2_id,
-        t21_id,
-        t22_id,
-    );
-
-    // attach beat timer to sound player
-    // TODO: move this system to SoundSystemPlugin
-    let sound_timer = Timer::new(
-        Duration::from_millis(sound_interval as u64),
-        TimerMode::Repeating,
-    );
-    commands
-        .spawn(sound_player1)
-        .insert(BeatTimer(sound_timer.clone()));
-    commands.spawn(sound_player2).insert(BeatTimer(sound_timer));
-
-    commands.spawn(Camera2dBundle::default());
-
-    commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
-    commands.insert_resource(WSound(asset_server.load("sounds/W.ogg")));
-    commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
 }
 
 #[derive(Debug, Component)]
