@@ -10,6 +10,11 @@ const BOTTOM_PANEL_HEIGHT: f32 = 200.;
 #[derive(Debug, Component)]
 struct GameUi;
 
+#[derive(Bundle)]
+struct PlayerInfoPanelBundle {
+    sprite: SpriteBundle,
+}
+
 fn add_game_level_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let background = asset_server.load("images/background.png");
     commands.spawn((
@@ -24,9 +29,12 @@ fn add_game_level_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         GameUi,
     ));
     // time label
+
     // bottom panel
+    let panel_img = asset_server.load("images/ui/game/Black.png");
     commands.spawn((
         SpriteBundle {
+            texture: panel_img,
             sprite: Sprite {
                 anchor: Anchor::BottomCenter,
                 custom_size: Some(Vec2::new(1920., BOTTOM_PANEL_HEIGHT)),
@@ -36,7 +44,6 @@ fn add_game_level_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 translation: Vec3::new(0., -540., 0.),
                 ..default()
             },
-            // z_index: ZIndex::Global(2),
             ..Default::default()
         },
         GameUi,

@@ -32,8 +32,8 @@ fn main() {
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        resolution: (1920., 1080.).into(),
-                        resizable: false,
+                        // resolution: (1920., 1080.).into(),
+                        // resizable: false,
                         ..Default::default()
                     }),
                     ..Default::default()

@@ -1,4 +1,3 @@
-use crate::config::ImageKey;
 use crate::plugins::input::{PlayerCommand, PlayerCommandEvent};
 use crate::{AppState, AttackEvent};
 use bevy::audio::{PlaybackMode, Volume};
@@ -8,6 +7,11 @@ use bevy_tweening::{Animator, EaseMethod, Tween};
 use rand::{thread_rng, Rng};
 use std::time::Duration;
 use std::vec;
+
+const BEAT_START: Vec2 = Vec2::new(0., -450.);
+const BEAT_END_P1: Vec2 = Vec2::new(-700., -450.);
+const BEAT_END_P2: Vec2 = Vec2::new(700., -450.);
+const BEAT_RING_OFFSET: f32 = 100.;
 
 #[derive(Debug)]
 pub struct SoundSystemPlugin;
@@ -19,15 +23,17 @@ impl Plugin for SoundSystemPlugin {
             .add_systems(OnEnter(AppState::InGame), start_sound_player)
             .add_systems(
                 Update,
-                (
-                    produce_beat_system,
-                    move_beat_system,
-                    produce_beat_on_player_start,
-                    sound_timer,
-                    check_key_down,
+                ((
+                    (check_key_down, sound_timer).chain(),
+                    (
+                        (produce_beat_system, produce_beat_on_player_start),
+                        move_beat_system,
+                    )
+                        .chain(),
                     player_hit_sound_system,
                 )
-                    .run_if(in_state(AppState::InGame)),
+                    .chain())
+                .run_if(in_state(AppState::InGame)),
             );
     }
 }
@@ -101,10 +107,9 @@ impl SoundPlayer {
         }
     }
 
-    pub fn start(&mut self, evt_w: &mut EventWriter<SoundPlayerStart>) {
+    pub fn start(&mut self) {
         self.reroll();
         self.has_started = true;
-        evt_w.send(SoundPlayerStart(self.action.action_type));
     }
 
     fn reroll(&mut self) {
@@ -152,7 +157,7 @@ impl SoundPlayer {
         };
 
         if self.timer.remaining() > allowed_error {
-            log::debug!("wrong! diff={} sec.", self.timer.remaining().as_secs_f32());
+            log::debug!(diff = self.timer.remaining().as_secs_f32(), "wrong!");
             self.fail(evt_w);
             self.past_key.clear();
             return;
@@ -291,6 +296,24 @@ fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
     commands.insert_resource(WSound(asset_server.load("sounds/W.ogg")));
     commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
+
+    let ring_img = asset_server.load("images/ui/game/white.png");
+    commands.spawn(SpriteBundle {
+        texture: ring_img.clone(),
+        transform: Transform {
+            translation: BEAT_END_P1.extend(10.) + Vec3::new(BEAT_RING_OFFSET, 0., 0.),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    commands.spawn(SpriteBundle {
+        texture: ring_img,
+        transform: Transform {
+            translation: BEAT_END_P2.extend(10.) - Vec3::new(BEAT_RING_OFFSET, 0., 0.),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
 }
 
 fn sound_timer(
@@ -313,6 +336,7 @@ fn sound_timer(
                     settings: PlaybackSettings::DESPAWN,
                 });
             }
+            log::debug!("timer just finished");
         }
 
         // Display keydown sequence
@@ -368,10 +392,11 @@ fn check_key_down(
 
 fn start_sound_player(
     mut query: Query<&mut SoundPlayer>,
-    mut sound_start_evt_w: EventWriter<SoundPlayerStart>,
+    mut evt_w: EventWriter<SoundPlayerStart>,
 ) {
     for mut sound_player in &mut query {
-        sound_player.start(&mut sound_start_evt_w);
+        sound_player.start();
+        evt_w.send(SoundPlayerStart(sound_player.action.action_type));
     }
 }
 
@@ -424,10 +449,6 @@ pub struct MoveBeat {
     pub duration: Duration,
 }
 
-const BEAT_START: Vec2 = Vec2::new(0., -400.);
-const BEAT_END_P1: Vec2 = Vec2::new(-500., -400.);
-const BEAT_END_P2: Vec2 = Vec2::new(500., -400.);
-
 fn produce_beat_system(mut query: Query<(&SoundPlayer, &mut BeatTimer)>, mut commands: Commands) {
     for (sound_player, mut beat_timer) in &mut query {
         if !sound_player.has_started {
@@ -435,7 +456,7 @@ fn produce_beat_system(mut query: Query<(&SoundPlayer, &mut BeatTimer)>, mut com
         }
 
         if sound_player.timer.just_finished() {
-            let duration = sound_player.interval - sound_player.timer.elapsed();
+            let duration = sound_player.timer.remaining();
             match sound_player.action.action_type {
                 ActionType::Player1 => {
                     log::trace!("beat p1");
@@ -500,13 +521,17 @@ fn move_beat_system(
             },
         );
 
-        let img = asset_server.load(format!("images/{}", ImageKey::GenShinStart));
+        let img = asset_server.load("images/ui/game/A.png");
         commands.spawn((
             SpriteBundle {
                 texture: img,
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(50., 50.)),
                     ..default()
+                },
+                transform: Transform {
+                    translation: from,
+                    ..Default::default()
                 },
                 ..default()
             },
