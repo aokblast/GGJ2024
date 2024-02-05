@@ -1,6 +1,7 @@
 use crate::ringcon::RingConEvent::Squat;
 use crate::ringcon::SquattingStates::{Doing, Done, No};
 use bevy::app::{App, Plugin, Startup};
+use bevy::log;
 use bevy::prelude::{Event, EventWriter, Res, ResMut, Resource, Update};
 use bevy::time::{Time, Timer, TimerMode};
 use dlopen2::wrapper::{Container, WrapperApi};
@@ -90,7 +91,7 @@ fn pull_ringcon_system(
             api.container.poll_ringcon(&mut res as *mut PullVal);
         }
 
-        println!("{}", res.push_val);
+        log::trace!("{}", res.push_val);
 
         let detected_key = {
             if res.push_val >= PUSHING_THRESHOLD {
@@ -103,14 +104,10 @@ fn pull_ringcon_system(
         };
 
         if let Some(key) = detected_key {
-            if let Some(key2) = api.ring_stat {
-                if key != key2 {
-                    event.send(key);
-                }
-            }
-
-            if api.ring_stat.is_none() {
-                event.send(key);
+            match api.ring_stat {
+                Some(key2) if key2 != key => event.send(key),
+                None => event.send(key),
+                _ => {}
             }
         }
 
@@ -157,8 +154,8 @@ fn pull_ringcon_system(
 impl Plugin for RingConPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RingConRS::new())
-            // .add_systems(Startup, ringcon_init)
-            // .add_systems(Update, pull_ringcon_system)
+            .add_systems(Startup, ringcon_init)
+            .add_systems(Update, pull_ringcon_system)
             .add_event::<RingConEvent>();
     }
 }

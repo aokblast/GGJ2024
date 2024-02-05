@@ -2,6 +2,7 @@ use crate::ringcon::RingConEvent;
 use bevy::{
     app::AppExit,
     input::{keyboard::KeyboardInput, ButtonState},
+    log,
     prelude::*,
 };
 
@@ -15,7 +16,7 @@ impl Plugin for GameInputPlugin {
             (
                 check_keyboard_input,
                 // debug_player_command,
-                #[cfg(target_os = "windows")]
+                #[cfg(all(target_os = "windows", feature = "ringcon"))]
                 check_ringcon_input,
             ),
         );
@@ -121,6 +122,6 @@ fn check_ringcon_input(
 
 fn debug_player_command(mut evt: EventReader<PlayerCommandEvent>) {
     for e in evt.read() {
-        eprintln!("{e:?}");
+        log::trace!("{e:?}");
     }
 }

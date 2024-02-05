@@ -3,20 +3,16 @@ mod plugins;
 mod ringcon;
 mod sound_player;
 
-use crate::ringcon::RingConEvent;
-use bevy::app::AppExit;
-use bevy::input::{keyboard::KeyboardInput, ButtonState};
+use bevy::log::{self, LogPlugin};
 use bevy::math::bool;
 use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
-use config::ImageKey;
 use plugins::art::ArtPlugin;
 use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::input::GameInputPlugin;
 use plugins::start_menu::StartMenuPlugin;
-use plugins::{JumpImage, JumpImagePlugin};
-use ringcon::RingConPlugin;
+use plugins::JumpImagePlugin;
 use sound_player::*;
 
 #[derive(Debug, Event)]
@@ -32,14 +28,21 @@ fn main() {
     App::new()
         .add_event::<AttackEvent>()
         .add_event::<GenEvent>()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: (1920., 1080.).into(),
-                resizable: false,
-                ..Default::default()
-            }),
-            ..Default::default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: (1920., 1080.).into(),
+                        resizable: false,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .set(LogPlugin {
+                    level: log::Level::DEBUG,
+                    ..Default::default()
+                }),
+        )
         .add_state::<AppState>()
         // third-party plugins
         .add_plugins(TweeningPlugin)
@@ -52,19 +55,14 @@ fn main() {
             StartMenuPlugin,
             GameInputPlugin,
             ArtPlugin,
-            #[cfg(target_os = "windows")]
+            #[cfg(all(target_os = "windows", feature = "ringcon"))]
             RingConPlugin,
         ))
         .add_systems(Startup, |mut commands: Commands| {
             commands.spawn(Camera2dBundle::default());
         })
         .add_systems(OnEnter(AppState::InGame), setup_in_game_ui)
-        .add_systems(
-            FixedUpdate,
-            (/* phah, */score_system)
-                .chain()
-                .run_if(in_state(AppState::InGame)),
-        )
+        .add_systems(Update, score_system.run_if(in_state(AppState::InGame)))
         .insert_resource(CounterNumber {
             score1: 0,
             score2: 0,
@@ -97,48 +95,6 @@ enum AppState {
     Menu,
     CharacterSelection,
     InGame,
-}
-
-fn phah(mut commands: Commands, mut events: EventReader<KeyboardInput>) {
-    for event in events.read() {
-        if event.state == ButtonState::Pressed {
-            if event.key_code == Some(KeyCode::Space) {
-                commands.spawn(JumpImage {
-                    key: ImageKey::WhyHaRuHiKaGe,
-                    from: Vec2::new(-960., 0.),
-                    to: Vec2::new(-240., 0.),
-                });
-            }
-            if event.key_code == Some(KeyCode::G) {
-                commands.spawn(JumpImage {
-                    key: ImageKey::GenShinStart,
-                    from: Vec2::new(-960., 0.),
-                    to: Vec2::new(-240., 0.),
-                });
-            }
-            if event.key_code == Some(KeyCode::H) {
-                commands.spawn(JumpImage {
-                    key: ImageKey::Monkey,
-                    from: Vec2::new(-960., 0.),
-                    to: Vec2::new(-240., 0.),
-                });
-            }
-            if event.key_code == Some(KeyCode::J) {
-                commands.spawn(JumpImage {
-                    key: ImageKey::NetArmy,
-                    from: Vec2::new(-960., 0.),
-                    to: Vec2::new(-240., 0.),
-                });
-            }
-            if event.key_code == Some(KeyCode::K) {
-                commands.spawn(JumpImage {
-                    key: ImageKey::MaZu,
-                    from: Vec2::new(-960., 0.),
-                    to: Vec2::new(-240., 0.),
-                });
-            }
-        }
-    }
 }
 
 const COUNTER_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
@@ -306,7 +262,7 @@ fn setup_in_game_ui(
     evt_w.send(GenEvent(2, 3));
 }
 
-pub fn score_system(
+pub(crate) fn score_system(
     mut counter: ResMut<CounterNumber>,
     mut combo: ResMut<ComboNumber>,
     setting: Res<ScoreSetting>,

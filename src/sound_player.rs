@@ -2,11 +2,11 @@ use crate::config::ImageKey;
 use crate::plugins::input::{PlayerCommand, PlayerCommandEvent};
 use crate::{AppState, AttackEvent};
 use bevy::audio::{PlaybackMode, Volume};
-use bevy::prelude::*;
+use bevy::{log, prelude::*};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseMethod, Tween};
-use rand::Rng;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use rand::{thread_rng, Rng};
+use std::time::Duration;
 use std::vec;
 
 #[derive(Debug)]
@@ -61,13 +61,10 @@ pub struct SoundPlayerStart(pub ActionType);
 #[derive(Component)]
 pub struct SoundPlayer {
     pub action: Action,
-    interval: u128,
-    start_time: u128,
-    action_start_time: u128,
-    action_last_time: u128,
+    timer: Timer,
+    interval: Duration,
     pub past_key: Vec<i32>,
     pub has_started: bool,
-    last_step: u128,
     pub sound_id: Entity,
     pub goal_text_id: Entity,
     pub past_text_id: Entity,
@@ -83,16 +80,9 @@ impl Action {
     }
 }
 
-fn vec_compare(va: &[i32], vb: &[i32]) -> bool {
-    (va.len() == vb.len()) &&  // zip stops at the shortest
-     va.iter()
-       .zip(vb)
-       .all(|(a,b)| a == b)
-}
-
 impl SoundPlayer {
     pub fn new(
-        interval: u128,
+        interval: Duration,
         action_type: ActionType,
         sound_id: Entity,
         goal_text_id: Entity,
@@ -101,12 +91,9 @@ impl SoundPlayer {
         Self {
             action: Action::new(action_type),
             interval,
-            start_time: 0,
-            action_start_time: 0,
-            action_last_time: 0,
+            timer: Timer::new(interval, TimerMode::Repeating),
             past_key: vec![],
             has_started: false,
-            last_step: 0,
             sound_id,
             goal_text_id,
             past_text_id,
@@ -115,33 +102,28 @@ impl SoundPlayer {
     }
 
     pub fn start(&mut self, evt_w: &mut EventWriter<SoundPlayerStart>) {
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
-        self.start_time = since_the_epoch.as_millis();
         self.reroll();
         self.has_started = true;
-
         evt_w.send(SoundPlayerStart(self.action.action_type));
     }
 
     fn reroll(&mut self) {
         self.action.keys.clear();
-        let len = rand::thread_rng().gen_range(1..6);
+        let mut rng = thread_rng();
+        let len = rng.gen_range(1..6);
         for _ in 0..len {
-            self.action.keys.push(rand::thread_rng().gen_range(1..3));
+            self.action.keys.push(rng.gen_range(1..3));
         }
     }
 
     fn do_action(action_type: &ActionType, evt_w: &mut EventWriter<AttackEvent>) {
         match action_type {
             ActionType::Player1 => {
-                println!("Player1");
+                log::info!("Player1 attack");
                 evt_w.send(AttackEvent(1, true));
             }
             ActionType::Player2 => {
-                println!("Player2");
+                log::info!("Player2 attack");
                 evt_w.send(AttackEvent(2, true));
             }
         }
@@ -162,26 +144,22 @@ impl SoundPlayer {
         if !self.has_started {
             return;
         }
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
 
-        let mut interval = self.interval / 4;
+        let allowed_error = if is_ringcon {
+            self.interval / 2
+        } else {
+            self.interval / 4
+        };
 
-        if is_ringcon {
-            interval *= 2;
-        }
-
-        if self.action_start_time.abs_diff(since_the_epoch.as_millis()) < interval {
-            println!("wrong");
+        if self.timer.remaining() > allowed_error {
+            log::debug!("wrong! diff={} sec.", self.timer.remaining().as_secs_f32());
             self.fail(evt_w);
             self.past_key.clear();
             return;
         }
 
         if self.pressed {
-            println!("Double Press");
+            log::debug!("Double Press");
             self.fail(evt_w);
             self.past_key.clear();
             return;
@@ -189,12 +167,11 @@ impl SoundPlayer {
 
         self.pressed = true;
 
-        println!("{}", key);
+        log::trace!("key:{}", key);
 
         self.past_key.push(key);
-
         if (self.action.keys[self.past_key.len() - 1]) != *self.past_key.last().unwrap() {
-            println!("wrong combo");
+            log::trace!("wrong combo");
             self.fail(evt_w);
             self.past_key.clear();
         }
@@ -210,23 +187,14 @@ impl SoundPlayer {
         self.has_started = false;
     }
 
-    pub fn update(&mut self, time: u128) -> bool {
-        if !self.has_started {
+    pub fn update(&mut self, delta: Duration) -> bool {
+        self.timer.tick(delta);
+        if !self.timer.just_finished() {
             return false;
         }
-        self.action_last_time = self.action_start_time;
-        self.action_start_time = time;
-        let _start = SystemTime::now();
-
-        if (time - self.start_time) / self.interval <= self.last_step {
-            return false;
-        }
-
-        self.last_step = (time - self.start_time) / self.interval;
 
         self.pressed = false;
-
-        return true;
+        true
     }
 }
 
@@ -297,7 +265,7 @@ fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     let t21_id = commands.spawn(t21).id();
     let t22_id = commands.spawn(t22).id();
 
-    let sound_interval = 1000;
+    let sound_interval = Duration::from_millis(1000);
     let sound_player1: SoundPlayer = SoundPlayer::new(
         sound_interval,
         ActionType::Player1,
@@ -314,11 +282,7 @@ fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 
     // attach beat timer to sound player
-    // TODO: move this system to SoundSystemPlugin
-    let sound_timer = Timer::new(
-        Duration::from_millis(sound_interval as u64),
-        TimerMode::Repeating,
-    );
+    let sound_timer = Timer::new(sound_interval, TimerMode::Repeating);
     commands
         .spawn(sound_player1)
         .insert(BeatTimer(sound_timer.clone()));
@@ -334,15 +298,14 @@ fn sound_timer(
     mut query: Query<&mut SoundPlayer>,
     mut text_query: Query<&mut Text>,
     sound_query: Query<&Sound>,
+    time: Res<Time>,
 ) {
     for mut sound_player in &mut query {
-        if sound_player.update(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_millis()
-                + 1000,
-        ) {
+        if !sound_player.has_started {
+            continue;
+        }
+
+        if sound_player.update(time.delta()) {
             if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
                 commands.spawn(AudioBundle {
                     source: sound.0.clone(),
@@ -351,6 +314,8 @@ fn sound_timer(
                 });
             }
         }
+
+        // Display keydown sequence
         let mut s = "".to_owned();
         for k in &sound_player.past_key {
             s += k.to_string().as_str();
@@ -463,22 +428,17 @@ const BEAT_START: Vec2 = Vec2::new(0., -400.);
 const BEAT_END_P1: Vec2 = Vec2::new(-500., -400.);
 const BEAT_END_P2: Vec2 = Vec2::new(500., -400.);
 
-fn produce_beat_system(
-    mut query: Query<(&SoundPlayer, &mut BeatTimer)>,
-    time: Res<Time>,
-    mut commands: Commands,
-) {
+fn produce_beat_system(mut query: Query<(&SoundPlayer, &mut BeatTimer)>, mut commands: Commands) {
     for (sound_player, mut beat_timer) in &mut query {
         if !sound_player.has_started {
             continue;
         }
 
-        beat_timer.0.tick(time.delta());
-        if beat_timer.0.just_finished() {
-            let duration = Duration::from_millis(sound_player.interval as u64);
+        if sound_player.timer.just_finished() {
+            let duration = sound_player.interval - sound_player.timer.elapsed();
             match sound_player.action.action_type {
                 ActionType::Player1 => {
-                    eprintln!("beat p1");
+                    log::trace!("beat p1");
                     commands.spawn(MoveBeat {
                         from: BEAT_START,
                         to: BEAT_END_P1,
@@ -486,7 +446,7 @@ fn produce_beat_system(
                     });
                 }
                 ActionType::Player2 => {
-                    eprintln!("beat p2");
+                    log::trace!("beat p2");
                     commands.spawn(MoveBeat {
                         from: BEAT_START,
                         to: BEAT_END_P2,
