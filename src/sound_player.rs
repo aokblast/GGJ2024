@@ -24,7 +24,8 @@ impl Plugin for SoundSystemPlugin {
             .add_systems(
                 Update,
                 ((
-                    (check_key_down, sound_timer).chain(),
+                    sound_timer,
+                    check_key_down,
                     (
                         (produce_beat_system, produce_beat_on_player_start),
                         move_beat_system,
@@ -64,13 +65,13 @@ pub struct DSound(pub Handle<AudioSource>);
 #[derive(Event)]
 pub struct SoundPlayerStart(pub ActionType);
 
+#[derive(Component, Debug)]
+pub struct GameTimer(pub Timer);
+
 #[derive(Component)]
 pub struct SoundPlayer {
     pub action: Action,
-    timer: Timer,
-    interval: Duration,
     pub past_key: Vec<i32>,
-    pub sound_id: Entity,
     pub goal_text_id: Entity,
     pub past_text_id: Entity,
     pressed: bool,
@@ -86,19 +87,10 @@ impl Action {
 }
 
 impl SoundPlayer {
-    pub fn new(
-        interval: Duration,
-        action_type: ActionType,
-        sound_id: Entity,
-        goal_text_id: Entity,
-        past_text_id: Entity,
-    ) -> Self {
+    pub fn new(action_type: ActionType, goal_text_id: Entity, past_text_id: Entity) -> Self {
         let mut player = Self {
             action: Action::new(action_type),
-            interval,
-            timer: Timer::new(interval, TimerMode::Repeating),
             past_key: vec![],
-            sound_id,
             goal_text_id,
             past_text_id,
             pressed: false,
@@ -140,21 +132,9 @@ impl SoundPlayer {
         ));
         self.past_key.clear();
     }
-
-    pub fn update(&mut self, delta: Duration) -> bool {
-        self.timer.tick(delta);
-        if !self.timer.just_finished() {
-            return false;
-        }
-
-        self.pressed = false;
-        true
-    }
 }
 
 fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let sound1 = Sound(asset_server.load("sounds/gong.ogg"));
-    let sound2 = Sound(asset_server.load("sounds/gong.ogg"));
     let t11 = TextBundle::from_section(
         "",
         TextStyle {
@@ -212,28 +192,15 @@ fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    let sound1_id = commands.spawn(sound1).id();
-    let sound2_id = commands.spawn(sound2).id();
     let t11_id = commands.spawn(t11).id();
     let t12_id = commands.spawn(t12).id();
     let t21_id = commands.spawn(t21).id();
     let t22_id = commands.spawn(t22).id();
 
     let sound_interval = Duration::from_millis(1000);
-    let sound_player1: SoundPlayer = SoundPlayer::new(
-        sound_interval,
-        ActionType::Player1,
-        sound1_id,
-        t11_id,
-        t12_id,
-    );
-    let sound_player2: SoundPlayer = SoundPlayer::new(
-        sound_interval,
-        ActionType::Player2,
-        sound2_id,
-        t21_id,
-        t22_id,
-    );
+    commands.spawn(GameTimer(Timer::new(sound_interval, TimerMode::Repeating)));
+    let sound_player1: SoundPlayer = SoundPlayer::new(ActionType::Player1, t11_id, t12_id);
+    let sound_player2: SoundPlayer = SoundPlayer::new(ActionType::Player2, t21_id, t22_id);
 
     // attach beat timer to sound player
     let sound_timer = Timer::new(sound_interval, TimerMode::Repeating);
@@ -269,22 +236,27 @@ fn sound_timer(
     mut commands: Commands,
     mut query: Query<&mut SoundPlayer>,
     mut text_query: Query<&mut Text>,
-    sound_query: Query<&Sound>,
     time: Res<Time>,
+    mut game_timer_query: Query<&mut GameTimer>,
+    asset_server: Res<AssetServer>,
 ) {
-    for mut sound_player in &mut query {
-        if sound_player.update(time.delta()) {
-            if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
-                commands.spawn(AudioBundle {
-                    source: sound.0.clone(),
-                    // auto-despawn the entity when playback finishes
-                    settings: PlaybackSettings::DESPAWN,
-                });
-            }
-            log::debug!("timer just finished");
-        }
+    let mut game_timer = game_timer_query.get_single_mut().unwrap();
 
-        // Display keydown sequence
+    if game_timer.0.tick(time.delta()).just_finished() {
+        let sound = asset_server.load("sounds/gong.ogg");
+        commands.spawn(AudioBundle {
+            source: sound,
+            // auto-despawn the entity when playback finishes
+            settings: PlaybackSettings::DESPAWN,
+        });
+        for mut sound_player in &mut query {
+            sound_player.pressed = false;
+        }
+        log::debug!("timer just finished");
+    }
+
+    // Display keydown sequence
+    for sound_player in &query {
         let mut s = "".to_owned();
         for k in &sound_player.past_key {
             s += k.to_string().as_str();
@@ -310,7 +282,10 @@ fn check_key_down(
     mut player_command_evt: EventReader<PlayerCommandEvent>,
     mut query: Query<&mut SoundPlayer>,
     mut attack_evt_w: EventWriter<AttackEvent>,
+    game_timer_query: Query<&GameTimer>,
 ) {
+    let game_timer = game_timer_query.get_single().unwrap();
+
     for e in player_command_evt.read() {
         let action_type = if e.team == 1 {
             ActionType::Player1
@@ -328,10 +303,10 @@ fn check_key_down(
 
         for mut player in &mut query {
             if player.action.action_type == action_type {
-                let allowed_error = player.interval / 4;
+                let allowed_error = game_timer.0.duration() / 4;
 
-                if player.timer.remaining() > allowed_error {
-                    log::debug!(diff = player.timer.remaining().as_secs_f32(), "wrong!");
+                if game_timer.0.remaining() > allowed_error {
+                    log::debug!(diff = game_timer.0.remaining().as_secs_f32(), "wrong!");
                     player.fail(&mut attack_evt_w);
                     break;
                 }
@@ -420,29 +395,21 @@ pub struct MoveBeat {
     pub duration: Duration,
 }
 
-fn produce_beat_system(mut query: Query<(&SoundPlayer, &mut BeatTimer)>, mut commands: Commands) {
-    for (sound_player, mut beat_timer) in &mut query {
-        if sound_player.timer.just_finished() {
-            let duration = sound_player.timer.remaining();
-            match sound_player.action.action_type {
-                ActionType::Player1 => {
-                    log::trace!("beat p1");
-                    commands.spawn(MoveBeat {
-                        from: BEAT_START,
-                        to: BEAT_END_P1,
-                        duration,
-                    });
-                }
-                ActionType::Player2 => {
-                    log::trace!("beat p2");
-                    commands.spawn(MoveBeat {
-                        from: BEAT_START,
-                        to: BEAT_END_P2,
-                        duration,
-                    });
-                }
-            }
-        }
+fn produce_beat_system(query: Query<&GameTimer>, mut commands: Commands) {
+    let game_timer = query.get_single().unwrap();
+
+    if game_timer.0.just_finished() {
+        let duration = game_timer.0.remaining();
+        commands.spawn(MoveBeat {
+            from: BEAT_START,
+            to: BEAT_END_P1,
+            duration,
+        });
+        commands.spawn(MoveBeat {
+            from: BEAT_START,
+            to: BEAT_END_P2,
+            duration,
+        });
     }
 }
 
