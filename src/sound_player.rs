@@ -129,7 +129,7 @@ impl SoundPlayer {
         }
     }
 
-    fn fail(&self, evt_w: &mut EventWriter<AttackEvent>) {
+    fn fail(&mut self, evt_w: &mut EventWriter<AttackEvent>) {
         evt_w.send(AttackEvent(
             if self.action.action_type == ActionType::Player1 {
                 1
@@ -138,45 +138,7 @@ impl SoundPlayer {
             },
             false,
         ));
-    }
-
-    pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>, is_ringcon: bool) {
-        let allowed_error = if is_ringcon {
-            self.interval / 2
-        } else {
-            self.interval / 4
-        };
-
-        if self.timer.remaining() > allowed_error {
-            log::debug!(diff = self.timer.remaining().as_secs_f32(), "wrong!");
-            self.fail(evt_w);
-            self.past_key.clear();
-            return;
-        }
-
-        if self.pressed {
-            log::debug!("Double Press");
-            self.fail(evt_w);
-            self.past_key.clear();
-            return;
-        }
-
-        self.pressed = true;
-
-        log::trace!("key:{}", key);
-
-        self.past_key.push(key);
-        if (self.action.keys[self.past_key.len() - 1]) != *self.past_key.last().unwrap() {
-            log::trace!("wrong combo");
-            self.fail(evt_w);
-            self.past_key.clear();
-        }
-
-        if self.action.keys == self.past_key {
-            self.past_key.clear();
-            Self::do_action(&self.action.action_type, evt_w);
-            self.reroll();
-        }
+        self.past_key.clear();
     }
 
     pub fn update(&mut self, delta: Duration) -> bool {
@@ -366,7 +328,37 @@ fn check_key_down(
 
         for mut player in &mut query {
             if player.action.action_type == action_type {
-                player.key_down(key, &mut attack_evt_w, false);
+                let allowed_error = player.interval / 4;
+
+                if player.timer.remaining() > allowed_error {
+                    log::debug!(diff = player.timer.remaining().as_secs_f32(), "wrong!");
+                    player.fail(&mut attack_evt_w);
+                    break;
+                }
+
+                if player.pressed {
+                    log::debug!("Double Press");
+                    player.fail(&mut attack_evt_w);
+                    break;
+                }
+
+                player.pressed = true;
+                log::trace!(key = key);
+
+                player.past_key.push(key);
+                if (player.action.keys[player.past_key.len() - 1])
+                    != *player.past_key.last().unwrap()
+                {
+                    log::trace!("wrong combo");
+                    player.fail(&mut attack_evt_w);
+                }
+
+                if player.action.keys == player.past_key {
+                    player.past_key.clear();
+                    SoundPlayer::do_action(&player.action.action_type, &mut attack_evt_w);
+                    player.reroll();
+                }
+
                 break;
             }
         }
