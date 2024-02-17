@@ -1,5 +1,5 @@
 use crate::GenEvent;
-use bevy::{prelude::*, sprite::Anchor};
+use bevy::{log, prelude::*, sprite::Anchor};
 use bevy_tweening::{
     lens::TransformPositionLens, Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
 };
@@ -27,7 +27,7 @@ pub fn create_people_system(
     asset_server: Res<AssetServer>,
 ) {
     for (ent, img) in &query {
-        eprint!("jump people {:?}", ent);
+        log::debug!("jump people {ent:?}");
         let from = Vec3::new(img.from.x, img.from.y, 10.);
         let to = Vec3::new(img.to.x, img.to.y, 10.);
         let img: Handle<Image> = asset_server.load(img.img_name.to_string());
