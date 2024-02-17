@@ -4,15 +4,7 @@ mod plugins;
 use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
-use plugins::art::ArtPlugin;
-use plugins::character_selection::CharacterSelectionPlugin;
-use plugins::game_level::GameLevelUiPlugin;
-use plugins::input::GameInputPlugin;
-use plugins::ringcon::RingConPlugin;
-use plugins::score::ScorePlugin;
-use plugins::sound_player::SoundSystemPlugin;
-use plugins::start_menu::StartMenuPlugin;
-use plugins::JumpImagePlugin;
+use plugins::seventeen::SeventeenPlugins;
 
 fn main() {
     App::new()
@@ -35,18 +27,7 @@ fn main() {
         // third-party plugins
         .add_plugins(TweeningPlugin)
         // our plugins
-        .add_plugins((
-            JumpImagePlugin,
-            GameLevelUiPlugin,
-            SoundSystemPlugin,
-            CharacterSelectionPlugin,
-            StartMenuPlugin,
-            GameInputPlugin,
-            ArtPlugin,
-            ScorePlugin,
-            #[cfg(all(target_os = "windows", feature = "ringcon"))]
-            RingConPlugin,
-        ))
+        .add_plugins(SeventeenPlugins)
         .add_systems(Startup, |mut commands: Commands| {
             commands.spawn(Camera2dBundle::default());
         })

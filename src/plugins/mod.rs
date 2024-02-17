@@ -4,6 +4,7 @@ pub mod game_level;
 pub mod input;
 pub mod ringcon;
 pub mod score;
+pub mod seventeen;
 pub mod sound_player;
 pub mod start_menu;
 
