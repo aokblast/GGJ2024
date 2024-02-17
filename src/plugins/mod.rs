@@ -3,6 +3,7 @@ pub mod character_selection;
 pub mod game_level;
 pub mod input;
 pub mod ringcon;
+pub mod sound_player;
 pub mod start_menu;
 
 use std::time::Duration;

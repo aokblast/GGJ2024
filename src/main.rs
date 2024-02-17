@@ -1,6 +1,5 @@
 mod config;
 mod plugins;
-mod sound_player;
 
 use bevy::log::{self, LogPlugin};
 use bevy::math::bool;
@@ -11,9 +10,9 @@ use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::input::GameInputPlugin;
 use plugins::ringcon::RingConPlugin;
+use plugins::sound_player::SoundSystemPlugin;
 use plugins::start_menu::StartMenuPlugin;
 use plugins::JumpImagePlugin;
-use sound_player::*;
 
 #[derive(Debug, Event)]
 struct GenEvent(i32, i32); //player/img
