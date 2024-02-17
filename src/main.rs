@@ -1,6 +1,5 @@
 mod config;
 mod plugins;
-mod ringcon;
 mod sound_player;
 
 use bevy::log::{self, LogPlugin};
@@ -11,6 +10,7 @@ use plugins::art::ArtPlugin;
 use plugins::character_selection::CharacterSelectionPlugin;
 use plugins::game_level::GameLevelUiPlugin;
 use plugins::input::GameInputPlugin;
+use plugins::ringcon::RingConPlugin;
 use plugins::start_menu::StartMenuPlugin;
 use plugins::JumpImagePlugin;
 use sound_player::*;
