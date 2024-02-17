@@ -1,5 +1,6 @@
 use crate::plugins::input::{PlayerCommand, PlayerCommandEvent};
-use crate::{AppState, AttackEvent};
+use crate::plugins::score::AttackEvent;
+use crate::AppState;
 use bevy::audio::{PlaybackMode, Volume};
 use bevy::{log, prelude::*};
 use bevy_tweening::lens::TransformPositionLens;
