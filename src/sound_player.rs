@@ -70,7 +70,6 @@ pub struct SoundPlayer {
     timer: Timer,
     interval: Duration,
     pub past_key: Vec<i32>,
-    pub has_started: bool,
     pub sound_id: Entity,
     pub goal_text_id: Entity,
     pub past_text_id: Entity,
@@ -94,22 +93,18 @@ impl SoundPlayer {
         goal_text_id: Entity,
         past_text_id: Entity,
     ) -> Self {
-        Self {
+        let mut player = Self {
             action: Action::new(action_type),
             interval,
             timer: Timer::new(interval, TimerMode::Repeating),
             past_key: vec![],
-            has_started: false,
             sound_id,
             goal_text_id,
             past_text_id,
             pressed: false,
-        }
-    }
-
-    pub fn start(&mut self) {
-        self.reroll();
-        self.has_started = true;
+        };
+        player.reroll();
+        player
     }
 
     fn reroll(&mut self) {
@@ -146,10 +141,6 @@ impl SoundPlayer {
     }
 
     pub fn key_down(&mut self, key: i32, evt_w: &mut EventWriter<AttackEvent>, is_ringcon: bool) {
-        if !self.has_started {
-            return;
-        }
-
         let allowed_error = if is_ringcon {
             self.interval / 2
         } else {
@@ -186,10 +177,6 @@ impl SoundPlayer {
             Self::do_action(&self.action.action_type, evt_w);
             self.reroll();
         }
-    }
-
-    pub fn end(&mut self) {
-        self.has_started = false;
     }
 
     pub fn update(&mut self, delta: Duration) -> bool {
@@ -324,10 +311,6 @@ fn sound_timer(
     time: Res<Time>,
 ) {
     for mut sound_player in &mut query {
-        if !sound_player.has_started {
-            continue;
-        }
-
         if sound_player.update(time.delta()) {
             if let Ok(sound) = sound_query.get_component::<Sound>(sound_player.sound_id) {
                 commands.spawn(AudioBundle {
@@ -390,12 +373,8 @@ fn check_key_down(
     }
 }
 
-fn start_sound_player(
-    mut query: Query<&mut SoundPlayer>,
-    mut evt_w: EventWriter<SoundPlayerStart>,
-) {
-    for mut sound_player in &mut query {
-        sound_player.start();
+fn start_sound_player(query: Query<&SoundPlayer>, mut evt_w: EventWriter<SoundPlayerStart>) {
+    for sound_player in &query {
         evt_w.send(SoundPlayerStart(sound_player.action.action_type));
     }
 }
@@ -451,10 +430,6 @@ pub struct MoveBeat {
 
 fn produce_beat_system(mut query: Query<(&SoundPlayer, &mut BeatTimer)>, mut commands: Commands) {
     for (sound_player, mut beat_timer) in &mut query {
-        if !sound_player.has_started {
-            continue;
-        }
-
         if sound_player.timer.just_finished() {
             let duration = sound_player.timer.remaining();
             match sound_player.action.action_type {
