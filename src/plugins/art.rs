@@ -1,10 +1,11 @@
-use crate::GenEvent;
 use bevy::{log, prelude::*, sprite::Anchor};
 use bevy_tweening::{
     lens::TransformPositionLens, Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween,
 };
 use rand::prelude::*;
 use std::time::Duration;
+
+use crate::plugins::score::GenEvent;
 
 #[derive(Debug, Component)]
 pub struct JumpPeopleImage {

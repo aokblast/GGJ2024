@@ -1,5 +1,3 @@
-use crate::ringcon::RingConEvent::Squat;
-use crate::ringcon::SquattingStates::{Doing, Done, No};
 use bevy::app::{App, Plugin, Startup};
 use bevy::log;
 use bevy::prelude::{Event, EventWriter, Res, ResMut, Resource, Update};
@@ -114,7 +112,7 @@ fn pull_ringcon_system(
         api.ring_stat = detected_key;
     }
 
-    if api.squat_rs.stat == Doing {
+    if api.squat_rs.stat == SquattingStates::Doing {
         if res.squatting {
             api.squat_rs.sq += 1;
         }
@@ -126,23 +124,23 @@ fn pull_ringcon_system(
     if api.squat_timer.finished() {
         let mut stat = api.squat_rs.stat;
 
-        if stat == Doing {
+        if stat == SquattingStates::Doing {
             if (api.squat_rs.sq as f64 / api.squat_rs.nsq as f64) >= SQUATTING_THRESHOLD {
-                stat = Done;
+                stat = SquattingStates::Done;
             } else {
-                stat = No;
+                stat = SquattingStates::No;
             }
         }
 
-        if stat == No {
+        if stat == SquattingStates::No {
             if res.squatting {
-                stat = Doing;
+                stat = SquattingStates::Doing;
                 api.squat_rs.sq = 0;
                 api.squat_rs.nsq = 0;
             }
-        } else if stat == Done {
-            event.send(Squat);
-            stat = No;
+        } else if stat == SquattingStates::Done {
+            event.send(RingConEvent::Squat);
+            stat = SquattingStates::No;
             api.squat_rs.sq = 0;
             api.squat_rs.nsq = 0;
         }

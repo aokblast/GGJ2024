@@ -1,4 +1,4 @@
-use crate::ringcon::RingConEvent;
+use crate::plugins::ringcon::RingConEvent;
 use bevy::{
     app::AppExit,
     input::{keyboard::KeyboardInput, ButtonState},
