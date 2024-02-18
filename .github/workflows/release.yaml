@@ -94,8 +94,8 @@ jobs:
           cargo build --profile dist --no-default-features
       - name: Prepare release
         run: |
-          mkdir target/dist/assets && cp -r assets target/dist/assets
-          mkdir target/dist/credits && cp -r credits target/dist/credits
+          cp -r assets target/dist/
+          cp -r credits target/dist/
           cp hidapi.dll target/dist
           cp ringcon_driver.dll target/dist
           cp config.txt target/dist
