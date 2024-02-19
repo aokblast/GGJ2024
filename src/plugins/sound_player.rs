@@ -7,7 +7,6 @@ use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseMethod, Tween};
 use rand::{thread_rng, Rng};
 use std::time::Duration;
-use std::vec;
 
 const BEAT_START: Vec2 = Vec2::new(0., -450.);
 const BEAT_END_P1: Vec2 = Vec2::new(-700., -450.);
@@ -19,23 +18,19 @@ pub struct SoundSystemPlugin;
 
 impl Plugin for SoundSystemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SoundPlayerStart>()
-            .add_systems(Startup, setup_sound_system)
-            .add_systems(OnEnter(AppState::InGame), start_sound_player)
+        app.add_systems(Startup, setup_sound_system)
+            .add_systems(OnEnter(AppState::InGame), produce_beat_one_shot)
             .add_systems(
                 Update,
-                ((
+                (
                     sound_timer,
                     check_key_down,
-                    (
-                        (produce_beat_system, produce_beat_on_player_start),
-                        move_beat_system,
-                    )
-                        .chain(),
+                    produce_beat_system,
+                    move_beat_system,
                     player_hit_sound_system,
                 )
-                    .chain())
-                .run_if(in_state(AppState::InGame)),
+                    .chain()
+                    .run_if(in_state(AppState::InGame)),
             );
     }
 }
@@ -62,9 +57,6 @@ pub struct ASound(pub Handle<AudioSource>);
 
 #[derive(Resource)]
 pub struct DSound(pub Handle<AudioSource>);
-
-#[derive(Event)]
-pub struct SoundPlayerStart(pub ActionType);
 
 #[derive(Component, Debug)]
 pub struct GameTimer(pub Timer);
@@ -285,7 +277,7 @@ fn check_key_down(
     mut attack_evt_w: EventWriter<AttackEvent>,
     game_timer_query: Query<&GameTimer>,
 ) {
-    let game_timer = game_timer_query.get_single().unwrap();
+    let game_timer: &GameTimer = game_timer_query.get_single().unwrap();
 
     for e in player_command_evt.read() {
         let action_type = if e.team == 1 {
@@ -338,12 +330,6 @@ fn check_key_down(
                 break;
             }
         }
-    }
-}
-
-fn start_sound_player(query: Query<&SoundPlayer>, mut evt_w: EventWriter<SoundPlayerStart>) {
-    for sound_player in &query {
-        evt_w.send(SoundPlayerStart(sound_player.action.action_type));
     }
 }
 
@@ -414,27 +400,18 @@ fn produce_beat_system(query: Query<&GameTimer>, mut commands: Commands) {
     }
 }
 
-fn produce_beat_on_player_start(mut evt: EventReader<SoundPlayerStart>, mut commands: Commands) {
-    // FIXME: hard-coded
-    let duration = Duration::from_millis(1000);
-    for e in evt.read() {
-        match e.0 {
-            ActionType::Player1 => {
-                commands.spawn(MoveBeat {
-                    from: BEAT_START,
-                    to: BEAT_END_P1,
-                    duration,
-                });
-            }
-            ActionType::Player2 => {
-                commands.spawn(MoveBeat {
-                    from: BEAT_START,
-                    to: BEAT_END_P2,
-                    duration,
-                });
-            }
-        }
-    }
+fn produce_beat_one_shot(query: Query<&GameTimer>, mut commands: Commands) {
+    let duration = query.get_single().unwrap().0.duration();
+    commands.spawn(MoveBeat {
+        from: BEAT_START,
+        to: BEAT_END_P1,
+        duration,
+    });
+    commands.spawn(MoveBeat {
+        from: BEAT_START,
+        to: BEAT_END_P2,
+        duration,
+    });
 }
 
 fn move_beat_system(
