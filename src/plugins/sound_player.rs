@@ -7,9 +7,7 @@ use bevy::time::Stopwatch;
 use bevy::{log, prelude::*};
 use bevy_tweening::lens::TransformPositionLens;
 use bevy_tweening::{Animator, EaseMethod, Tween};
-use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
-use std::collections::VecDeque;
 use std::time::Duration;
 
 const BEAT_START: Vec2 = Vec2::new(0., -450.);
@@ -81,38 +79,6 @@ struct Beat {
     key: i32,
 }
 
-#[derive(Debug, Component)]
-struct BeatSequence {
-    pub keys: VecDeque<i32>,
-}
-
-impl BeatSequence {
-    pub fn new(keys: Vec<i32>) -> Self {
-        Self {
-            keys: VecDeque::from(keys),
-        }
-    }
-
-    pub fn finished(&self) -> bool {
-        self.keys.is_empty()
-    }
-
-    pub fn try_next(&mut self) -> Option<i32> {
-        self.keys.pop_front()
-    }
-
-    pub fn next(&mut self) -> i32 {
-        self.try_next().unwrap()
-    }
-}
-
-fn random_beat_sequence() -> BeatSequence {
-    let mut rng = thread_rng();
-    let len = rng.gen_range(1..6);
-    let keys = rng.sample_iter(Uniform::new(1, 3)).take(len).collect();
-    BeatSequence::new(keys)
-}
-
 #[derive(Component)]
 pub struct Sound(pub Handle<AudioSource>);
 
@@ -126,8 +92,6 @@ pub struct ASound(pub Handle<AudioSource>);
 pub struct DSound(pub Handle<AudioSource>);
 
 fn setup_sound_system(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(random_beat_sequence());
-
     commands.insert_resource(ASound(asset_server.load("sounds/A.ogg")));
     commands.insert_resource(WSound(asset_server.load("sounds/W.ogg")));
     commands.insert_resource(DSound(asset_server.load("sounds/D.ogg")));
@@ -302,12 +266,7 @@ pub struct MoveBeat {
     pub duration: Duration,
 }
 
-fn produce_beat_system(
-    mut beat_seq_query: Query<&mut BeatSequence>,
-    mut beat_ctl_query: Query<&mut BeatControl>,
-    mut commands: Commands,
-) {
-    let mut beat_seq = beat_seq_query.get_single_mut().unwrap();
+fn produce_beat_system(mut beat_ctl_query: Query<&mut BeatControl>, mut commands: Commands) {
     let mut beat_ctl = beat_ctl_query.get_single_mut().unwrap();
 
     let gen_delta = Duration::from_secs(1);
@@ -317,13 +276,8 @@ fn produce_beat_system(
             break;
         }
 
-        let key = match beat_seq.try_next() {
-            Some(k) => k,
-            None => {
-                *beat_seq = random_beat_sequence();
-                beat_seq.next()
-            }
-        };
+        let mut rng = thread_rng();
+        let key = rng.gen_range(1..=3);
         commands.spawn((
             Beat {
                 hit_point: gen,
