@@ -95,3 +95,6 @@ impl Plugin for JumpImagePlugin {
         app.add_systems(Update, (spawn_jump_image, despawn_jump_image));
     }
 }
+
+#[derive(Debug, Component, PartialEq, Eq)]
+pub struct Team(pub i32);
